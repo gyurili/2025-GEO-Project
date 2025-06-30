@@ -2,7 +2,8 @@
 - 어떤 작업을 했는지 한 줄 요약
 
 ## 🔗 관련 이슈
-Closes #XX
+- 전체 완료 시: Closes #XX
+- 일부 작업일 경우: Related to #XX 또는 Part of #XX
 
 ## ✅ 변경사항
 - 주요 파일 변경 및 추가 기능 정리
