@@ -1,14 +1,16 @@
 settings:
   verbose: False
-  project_root: ""
+  project_root: "."
 
 data:
-  output_path: "data/output"
-  result_path: "data/result"
+  output_path: "backend/data/output"
+  result_path: "backend/data/result"
 
 input:
   name: "우일 여성 여름 인견 7부 블라우스"
   category: "블라우스"
+  price: 18000
+  brand: "우일"
   features: "인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감"
   image_path: "data/input/product.jpg"
   product_link: "https://www.coupang.com/vp/products/example_id"
