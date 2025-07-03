@@ -12,26 +12,16 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-# =========================
-# 드라이버 초기화
-# =========================
 def init_safe_driver():
     options = uc.ChromeOptions()
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                         "(KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
     options.add_argument("--window-size=1920,1080")
+    # options.add_argument("--headless=new")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+    options.binary_location = "/usr/bin/google-chrome"
     driver = uc.Chrome(options=options)
-
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": """
-            Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
-            Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3]});
-            Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en']});
-            window.chrome = { runtime: {} };
-        """
-    })
-
     return driver
 
 
@@ -39,69 +29,26 @@ def init_safe_driver():
 # 리뷰 수집 (2점 이하 필터링)
 # =========================
 def crawl_reviews_by_link(driver, url: str, max_reviews: int = 30) -> List[str]:
-    logger.debug(f"🛠️ 상품 페이지 접속 시도: {url}")
+    logger.debug(f"🔀️ 네이버 상품 리뷰 페이지 요청: {url}")
     reviews = []
 
     try:
         driver.get(url)
         time.sleep(3)
-
-        # 리뷰 탭 클릭
-        try:
-            review_tab = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "li.sdp-review__article-tab-item[data-tab-name='REVIEW']"))
-            )
-            review_tab.click()
-            logger.info("✅ 리뷰 탭 클릭 완료")
-            time.sleep(2)
-        except Exception as e:
-            logger.error(f"❌ 리뷰 탭 클릭 실패: {e}")
-            return []
-
-        # 별점 낮은 순 정렬
-        try:
-            sort_btn = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.sdp-review__article__order__selected"))
-            )
-            sort_btn.click()
-            time.sleep(1)
-
-            low_rating_option = WebDriverWait(driver, 5).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "ul.sdp-review__article__order__list li[data-option-value='scoreAsc']"))
-            )
-            low_rating_option.click()
-            logger.info("✅ 별점 낮은 순 정렬 완료")
-            time.sleep(2)
-        except Exception as e:
-            logger.warning(f"⚠️ 별점 정렬 옵션 클릭 실패 (기본 정렬 유지): {e}")
-
-        # 스크롤 & 더보기 반복
-        for _ in range(10):
-            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.END)
-            time.sleep(1.5)
-            try:
-                more_btn = driver.find_element(By.CSS_SELECTOR, "button.sdp-review__article__order__option__more")
-                more_btn.click()
-                time.sleep(1.5)
-            except:
-                break
-
-        # 리뷰 파싱 + 2점 이하만 필터링
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        review_elements = soup.select("article.sdp-review__article__list__review")
-        logger.debug(f"🛠️ 전체 리뷰 엘리먼트 수: {len(review_elements)}")
+        review_elements = soup.select(".reviewItems_review_content__0Q2Tg")
+        logger.debug(f"🔀️ 전체 리뷰 엘리먼트 수: {len(review_elements)}")
 
         for el in review_elements:
-            rating_tag = el.select_one("span.rating-star")
+            rating_tag = el.find_previous("span", class_="reviewItems_average__F6aF2")
             rating = None
             if rating_tag:
-                aria = rating_tag.get("aria-label", "")
-                match = re.search(r"별점\s*(\d)", aria)
+                match = re.search(r"[0-9.]+", rating_tag.get_text())
                 if match:
-                    rating = int(match.group(1))
+                    rating = float(match.group(0))
 
             if rating is not None and rating > 2:
-                continue  # 2점 이하만
+                continue  # 2점 이하만 수집
 
             text = el.get_text(strip=True)
             text = re.sub(r"[^\w\s가-힣.,!?]", "", text)
@@ -115,59 +62,58 @@ def crawl_reviews_by_link(driver, url: str, max_reviews: int = 30) -> List[str]:
         return reviews
 
     except Exception as e:
-        logger.error(f"❌ 리뷰 크롤링 실패: {e}")
+        logger.error(f"❌ 리뷰 크롤링 시도 예외 발생: {e}")
         return []
 
 
 # =========================
 # 카테고리 검색 → 별점 낮은 제품 리뷰 수집
 # =========================
-def crawl_reviews_by_category(category: str, exclude_name: str = "", max_products: int = 3, max_reviews_per_product: int = 10) -> List[str]:
-    logger.debug(f"🛠️ 카테고리 기반 검색 시작: {category}")
-    driver = init_safe_driver()
+def crawl_reviews_by_category(category: str, max_products: int = 3, max_reviews_per_product: int = 10) -> List[str]:
+    logger.debug(f"🔀️ 네이버 쇼핑 카테고리 검색 시작: {category}")
     all_reviews = []
+    driver = init_safe_driver()
 
     try:
-        base_url = f"https://www.coupang.com/np/search?q={quote(category)}&page=1"
+        base_url = f"https://search.shopping.naver.com/search/all?query={quote(category)}&sort=review&rating=low"
         driver.get(base_url)
         time.sleep(4)
-
+        
+        screenshot_path = f"debug_naver_{category}.png"
+        driver.save_screenshot(screenshot_path)
+        logger.info(f"📸 네이버 검색 결과 스크린샷 저장 완료: {screenshot_path}")
+        
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        items = soup.select("li.search-product")
-        logger.debug(f"🛠️ 검색 결과 수: {len(items)}")
+        items = soup.select("ul.compositeCardList_product_list__hj4JR > li.compositeCardContainer_composite_card_container__r8c8b")
+        logger.debug(f"🔀️ 검색 결과 수: {len(items)}")
 
         product_infos = []
         for item in items:
-            if item.select_one(".ad-badge-text"):
-                continue  # 광고 제외
+            link_tag = item.select_one("a.basicProductCard_link__urzND")
+            title_tag = item.select_one("strong.basicProductCard_title__VfX3c")
+            rating_tag = item.select_one("span.basicProductCard_average__YGapX")
 
-            title_tag = item.select_one("div.name")
-            link_tag = item.select_one("a.search-product-link")
-            rating_tag = item.select_one("em.rating")
-            count_tag = item.select_one("span.rating-total-count")
-
-            if not title_tag or not link_tag or not rating_tag or not count_tag:
-                continue
-
-            title = title_tag.get_text(strip=True)
-            if exclude_name and exclude_name in title:
+            if not link_tag or not title_tag or not rating_tag:
                 continue
 
             try:
                 rating = float(rating_tag.get_text(strip=True))
-                rating_count = int(re.sub(r"[^\d]", "", count_tag.get_text()))
             except:
                 continue
 
-            link = "https://www.coupang.com" + link_tag["href"]
-            product_infos.append((title, link, rating, rating_count))
+            link = link_tag["href"]
+            if link.startswith("/"):
+                link = "https://shopping.naver.com" + link
+
+            title = title_tag.get_text(strip=True)
+            product_infos.append((title, link, rating))
 
         product_infos.sort(key=lambda x: x[2])  # 별점 낮은 순
         selected = product_infos[:max_products]
         logger.info(f"✅ 별점 낮은 제품 {len(selected)}개 선택됨")
 
-        for title, link, rating, count in selected:
-            logger.info(f"✅ [{title}] 리뷰 수집 중... (평균 {rating}점, 리뷰 수 {count})")
+        for title, link, rating in selected:
+            logger.info(f"✅ [{title}] 리뷰 수집 중... (평균 {rating}점)")
             reviews = crawl_reviews_by_link(driver, link, max_reviews=max_reviews_per_product)
             all_reviews.extend(reviews)
             time.sleep(2)
