@@ -3,126 +3,158 @@ import time, re
 from urllib.parse import quote
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from utils.logger import get_logger
+from fake_useragent import UserAgent
 
 logger = get_logger(__name__)
 
 
+# =========================
+# 셀레니움 안전 실행 드라이버 초기화
+# =========================
 def init_safe_driver():
+    ua = UserAgent()
+    user_agent = ua.chrome
+
     options = uc.ChromeOptions()
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("--window-size=1920,1080")
-    # options.add_argument("--headless=new")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36")
+    options.add_argument(f"user-agent={user_agent}")
     options.binary_location = "/usr/bin/google-chrome"
     driver = uc.Chrome(options=options)
     return driver
 
 
 # =========================
-# 리뷰 수집 (2점 이하 필터링)
+# 쿠팡 상품 리뷰 수집 (별점 2점 이하만 필터링)
 # =========================
 def crawl_reviews_by_link(driver, url: str, max_reviews: int = 30) -> List[str]:
-    logger.debug(f"🔀️ 네이버 상품 리뷰 페이지 요청: {url}")
+    logger.debug(f"🔀️ 쿠팡 상품 리뷰 페이지 요청: {url}")
     reviews = []
 
     try:
-        driver.get(url)
+        # 리뷰 탭 URL은 상품 링크 뒤에 /reviews 추가
+        review_url = url + "/reviews"
+        driver.get(review_url)
         time.sleep(3)
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        review_elements = soup.select(".reviewItems_review_content__0Q2Tg")
-        logger.debug(f"🔀️ 전체 리뷰 엘리먼트 수: {len(review_elements)}")
 
-        for el in review_elements:
-            rating_tag = el.find_previous("span", class_="reviewItems_average__F6aF2")
-            rating = None
-            if rating_tag:
-                match = re.search(r"[0-9.]+", rating_tag.get_text())
-                if match:
-                    rating = float(match.group(0))
+        # 페이지 탐색 및 리뷰 수집
+        while len(reviews) < max_reviews:
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            review_elements = soup.select("div.sdp-review__article__list__review__content")
 
-            if rating is not None and rating > 2:
-                continue  # 2점 이하만 수집
+            for el in review_elements:
+                # 별점 추출 (별점은 width 퍼센트로 표현됨)
+                rating_tag = el.find_previous("div", class_="sdp-review__article__list__info__product-info__star-orange")
+                rating = None
+                if rating_tag:
+                    match = re.search(r"width:\s*(\d+)%", str(rating_tag))
+                    if match:
+                        percentage = int(match.group(1))
+                        rating = round(percentage / 20, 1)
 
-            text = el.get_text(strip=True)
-            text = re.sub(r"[^\w\s가-힣.,!?]", "", text)
-            if text:
-                reviews.append(text)
+                # 2점 이하만 수집
+                if rating is not None and rating > 2:
+                    continue
 
-            if len(reviews) >= max_reviews:
+                text = el.get_text(strip=True)
+                text = re.sub(r"[^\w\s가-힣.,!?]", "", text)
+                if text:
+                    reviews.append(text)
+
+                if len(reviews) >= max_reviews:
+                    break
+
+            # 다음 페이지 버튼 클릭 (없으면 종료)
+            try:
+                next_btn = driver.find_element(By.CSS_SELECTOR, "button.sdp-review__article__page__button--next")
+                if "disabled" in next_btn.get_attribute("class"):
+                    break
+                next_btn.click()
+                time.sleep(2)
+            except:
                 break
 
         logger.info(f"✅ 별점 2점 이하 리뷰 {len(reviews)}개 수집 완료")
         return reviews
 
     except Exception as e:
-        logger.error(f"❌ 리뷰 크롤링 시도 예외 발생: {e}")
+        logger.error(f"❌ 리뷰 크롤링 예외 발생: {e}")
         return []
 
 
 # =========================
-# 카테고리 검색 → 별점 낮은 제품 리뷰 수집
+# 쿠팡 카테고리 검색 → 상품 목록에서 리뷰 수집
 # =========================
 def crawl_reviews_by_category(category: str, max_products: int = 3, max_reviews_per_product: int = 10) -> List[str]:
-    logger.debug(f"🔀️ 네이버 쇼핑 카테고리 검색 시작: {category}")
+    logger.debug(f"🔀️ 쿠팡 검색 시작: {category}")
     all_reviews = []
     driver = init_safe_driver()
 
     try:
-        base_url = f"https://search.shopping.naver.com/search/all?query={quote(category)}&sort=review&rating=low"
+        # 쿠팡 검색 URL 구성 (리뷰순 정렬)
+        base_url = f"https://www.coupang.com/np/search?q={quote(category)}&sorter=scoreDesc"
         driver.get(base_url)
-        time.sleep(4)
-        
-        screenshot_path = f"debug_naver_{category}.png"
-        driver.save_screenshot(screenshot_path)
-        logger.info(f"📸 네이버 검색 결과 스크린샷 저장 완료: {screenshot_path}")
-        
+
+        # 렌더링 유도: 스크롤 두 번
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)
+        driver.execute_script("window.scrollTo(0, 0);")
+        time.sleep(1)
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)
+
+        # 상품 리스트 요소 로딩 대기
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, 'ul#product-list li[class^="ProductUnit_productUnit__"]')
+                )
+            )
+            time.sleep(2)
+        except Exception as e:
+            logger.error(f"⏰ 상품 리스트 로딩 실패 (Timeout): {e}")
+            return []
+
+        # 상품 링크 수집
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        items = soup.select("ul.compositeCardList_product_list__hj4JR > li.compositeCardContainer_composite_card_container__r8c8b")
-        logger.debug(f"🔀️ 검색 결과 수: {len(items)}")
+        product_links = []
 
-        product_infos = []
-        for item in items:
-            link_tag = item.select_one("a.basicProductCard_link__urzND")
-            title_tag = item.select_one("strong.basicProductCard_title__VfX3c")
-            rating_tag = item.select_one("span.basicProductCard_average__YGapX")
+        product_tags = soup.select('ul#product-list li[class^="ProductUnit_productUnit__"]')
+        logger.debug(f"🔍 상품 엘리먼트 개수: {len(product_tags)}")
 
-            if not link_tag or not title_tag or not rating_tag:
+        for idx, li in enumerate(product_tags):
+            a_tag = li.select_one('a[href^="/vp/products/"]')
+            if not a_tag:
                 continue
 
-            try:
-                rating = float(rating_tag.get_text(strip=True))
-            except:
-                continue
+            href = a_tag.get("href")
+            full_url = "https://www.coupang.com" + href
+            product_links.append(full_url)
+            logger.debug(f"✅ 상품 {idx + 1}: {full_url}")
 
-            link = link_tag["href"]
-            if link.startswith("/"):
-                link = "https://shopping.naver.com" + link
+            if len(product_links) >= max_products:
+                break
 
-            title = title_tag.get_text(strip=True)
-            product_infos.append((title, link, rating))
+        logger.info(f"✅ 리뷰 수집 대상 상품 수: {len(product_links)}")
 
-        product_infos.sort(key=lambda x: x[2])  # 별점 낮은 순
-        selected = product_infos[:max_products]
-        logger.info(f"✅ 별점 낮은 제품 {len(selected)}개 선택됨")
-
-        for title, link, rating in selected:
-            logger.info(f"✅ [{title}] 리뷰 수집 중... (평균 {rating}점)")
+        # 각 상품별 리뷰 수집
+        for link in product_links:
+            logger.info(f"✅ 리뷰 수집 중: {link}")
             reviews = crawl_reviews_by_link(driver, link, max_reviews=max_reviews_per_product)
             all_reviews.extend(reviews)
             time.sleep(2)
 
-        logger.info(f"✅ 총 리뷰 수집 개수: {len(all_reviews)}")
+        logger.info(f"✅ 총 수집 리뷰 수: {len(all_reviews)}")
         return all_reviews
 
     except Exception as e:
-        logger.error(f"❌ 카테고리 검색 크롤링 실패: {e}")
+        logger.error(f"❌ 쿠팡 크롤링 실패: {e}")
         return []
 
     finally:
