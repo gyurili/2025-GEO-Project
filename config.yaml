@@ -1,6 +1,6 @@
 settings:
   verbose: False
-  project_root: "."
+  project_root: ""
 
 data:
   output_path: "backend/data/output"
