@@ -70,4 +70,5 @@ def expand_product_details():
 def apply_css():
     return f"""
     HTML 내에 <style> 태그를 사용하여 기본적인 CSS 스타일을 적용해주세요.
+    HTML 본문 영역의 최대 폭(max-width)을 제한하고 좌우에 여백을 두어 가운데 정렬되도록 만들어주세요.
     """
