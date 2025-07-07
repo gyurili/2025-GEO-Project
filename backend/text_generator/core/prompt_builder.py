@@ -66,9 +66,28 @@ def expand_product_details():
     또한, 소비자의 감성을 자극할 수 있도록 계절감, 착용 상황, 감정적 효과(예: 시원함, 가벼움, 편안함 등)를 함께 묘사해주세요.
     구매를 유도할 수 있는 매력적인 문장이나 마무리 문구도 추가해 주세요.
     """
+    
+def css_friendly_prompt():
+    return """
+    HTML은 사전에 정의된 CSS 템플릿이 적용될 수 있도록 예측 가능한 구조로 작성해주세요.
+    inline 스타일은 사용하지 말고, 시맨틱 태그와 class명을 활용해 구조를 구분해주세요.
 
-def apply_css():
-    return f"""
-    HTML 내에 <style> 태그를 사용하여 기본적인 CSS 스타일을 적용해주세요.
-    HTML 본문 영역의 최대 폭(max-width)을 제한하고 좌우에 여백을 두어 가운데 정렬되도록 만들어주세요.
+    다음과 같은 class 기반 구조를 따라 작성해주세요:
+
+    - <div class="product-page">: 전체 상세페이지 컨테이너
+    - <h1 class="product-title">: 제품 제목
+    - <p class="product-summary">: 간단한 제품 요약 문장
+    - <ul class="product-features">: 제품 주요 특징 리스트
+        - <li>단일 특징</li>
+    - <div class="product-section">: 각 주요 섹션 래퍼
+        - <h2>소제목</h2>
+        - <p>내용</p>
+    - <div class="product-faq">: Q&A 전체 영역
+        - 각 질문/답변 쌍은 다음처럼 <div class="faq-item">으로 묶어주세요:
+            - <div class="faq-item">
+                <div class="question">Q. 질문 내용</div>
+                <div class="answer">A. 답변 내용</div>
+              </div>
+
+    이 구조를 반드시 지켜주세요. class명은 변경하지 말고, 각 항목을 정확히 감싸주세요.
     """

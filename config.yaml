@@ -1,10 +1,20 @@
 settings:
-  verbose: False
-  project_root: ""
-
+  verbose: false
+  project_root: /home/ubuntu/2025-GEO-Project
 data:
-  output_path: "backend/data/output"
-  result_path: "backend/data/result"
+  output_path: /home/ubuntu/2025-GEO-Project/backend/data/output
+  result_path: /home/ubuntu/2025-GEO-Project/backend/data/result
+#input:
+#  name: 한성컴퓨터 노트북
+#  category: 컴퓨터/노트북
+#  price: 2350000
+#  brand: 한성컴퓨터
+#  features: 최고 가성비, 최고 사양
+#  image_path:
+#  - 2025-GEO-Project/backend/data/input/product_5722413ad3404026b9e6c2fce395fed7_0.jpg
+#  - 2025-GEO-Project/backend/data/input/product_193a7ab420954271bb7b9a2f5e1add11_1.jpg
+#  - 2025-GEO-Project/backend/data/input/product_07a55391f81642628fcad17c8eeb31be_2.jpg
+#  product_link: null
 
 input:
   name: "우일 여성 여름 인견 7부 블라우스"
