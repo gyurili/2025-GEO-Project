@@ -52,8 +52,6 @@ def competitor_main(product_input, openai_api_key):
     if not reviews:
         logger.warning("⚠️ 리뷰가 없어 이후 과정 생략")
         return {
-            "reviews": [],
-            "review_summary": "",
             "differences": []
         }
 
@@ -67,8 +65,6 @@ def competitor_main(product_input, openai_api_key):
 
     logger.info("✅ 차별점 리스트 생성 완료")
     return {
-        "reviews": reviews,
-        "review_summary": summary,
         "differences": differences
     }
 
