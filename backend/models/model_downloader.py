@@ -6,7 +6,7 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-def download_model(model_id: str, save_dir: str = "/home/ubuntu/2025-GEO-Project/backend/models")
+def download_model(model_id: str, save_dir: str = "/home/user/2025-GEO-Project/backend/models"):
     """
     Hugging Face에서 Stable Diffusion XL (SDXL) 모델을 다운로드하여 지정된 경로에 저장합니다.
     CPU/GPU 환경에 따라 torch_dtype을 설정합니다.
@@ -14,7 +14,7 @@ def download_model(model_id: str, save_dir: str = "/home/ubuntu/2025-GEO-Project
     Args:
         model_id (str): Hugging Face 모델 ID (예: "stabilityai/stable-diffusion-xl-base-1.0").
         save_dir (str, optional): 모델을 저장할 기본 디렉토리 경로.
-                                  기본값은 "/home/ubuntu/2025-GEO-Project/backend/models".
+                                  기본값은 "/home/user/2025-GEO-Project/backend/models".
 
     Returns:
         str: 모델이 저장된 최종 경로. 다운로드 또는 저장에 실패하면 None 반환.
@@ -36,7 +36,7 @@ def download_model(model_id: str, save_dir: str = "/home/ubuntu/2025-GEO-Project
     else: 
         load_kwargs["torch_dtype"] = torch.float32
         logger.info("✅ CPU를 사용하여 모델을 로드합니다.")
-    load_kwargs["device_map"] = "auto"
+    load_kwargs["device_map"] = "balanced"
 
     try:
         pipeline = DiffusionPipeline.from_pretrained(
