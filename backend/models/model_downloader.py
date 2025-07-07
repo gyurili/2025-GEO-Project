@@ -46,10 +46,11 @@ def download_model(model_id: str, save_dir: str = "/home/ubuntu/2025-GEO-Project
 
         pipeline.save_pretrained(model_save_path)
         logger.info(f"✅ 모델 '{model_id}'이(가) '{model_save_path}'에 저장됨")
+        return model_save_path
     except Exception as e:
         logger.error(f"❌ 모델 '{model_id}' 다운로드 및 저장 중 오류 발생: {e}")
         return None
-        
+
 # # 모델과 토크나이저 다운로드 및 저장
 # model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased")
 # tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
