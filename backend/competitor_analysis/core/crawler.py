@@ -12,7 +12,7 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# ✅ 쿠팡 상품 링크 정제 함수
+# 쿠팡 상품 링크 정제 함수
 def clean_coupang_url(url: str) -> str:
     logger.debug(f"🛠️ 쿠팡 상품 링크 정제: {url}")
     match = re.search(r"(https://www\.coupang\.com/vp/products/\d+)", url)
@@ -20,7 +20,7 @@ def clean_coupang_url(url: str) -> str:
     logger.debug(f"🛠️ 정제된 링크: {result}")
     return result
 
-# ✅ 드라이버 초기화
+# 드라이버 초기화
 def init_safe_driver():
     logger.debug("🛠️ 드라이버 초기화 시작")
     ua = UserAgent()
@@ -37,7 +37,7 @@ def init_safe_driver():
     logger.info("✅ 드라이버 실행 성공")
     return driver
 
-# ✅ 리뷰 필터 클릭
+# 리뷰 필터 클릭
 def click_review_filter(driver, label: str) -> bool:
     logger.debug(f"🛠️ 리뷰 필터 클릭 시도: {label}")
     try:
@@ -80,7 +80,7 @@ def click_review_filter(driver, label: str) -> bool:
 
     return False
 
-# ✅ 부정 리뷰 크롤링 (페이지네이션)
+# 부정 리뷰 크롤링 (페이지네이션)
 def crawl_bad_reviews(driver, max_reviews: int) -> List[str]:
     logger.debug("🛠️ 부정 리뷰 크롤링 시작")
     reviews = []
@@ -113,7 +113,7 @@ def crawl_bad_reviews(driver, max_reviews: int) -> List[str]:
         logger.info(f"✅ 부정 리뷰 {len(reviews)}개 크롤링 완료")
     return reviews
 
-# ✅ 단일 상품 상세 페이지에서 리뷰 수집
+# 단일 상품 상세 페이지에서 리뷰 수집
 def crawl_reviews_by_link(driver, url: str, max_reviews: int = 30) -> List[str]:
     url = clean_coupang_url(url)
     logger.debug(f"🛠️ 리뷰 수집 시작: {url}")
@@ -135,7 +135,7 @@ def crawl_reviews_by_link(driver, url: str, max_reviews: int = 30) -> List[str]:
         logger.error(f"❌ 리뷰 수집 실패: {e}")
         return []
 
-# ✅ 카테고리 검색 결과에서 N개 상품에 대해 리뷰 수집
+# 카테고리 검색 결과에서 N개 상품에 대해 리뷰 수집
 def crawl_reviews_by_category(category: str, max_products: int = 3, max_reviews_per_product: int = 10) -> List[str]:
     logger.debug(f"🛠️ 카테고리 '{category}'로 리뷰 크롤링 시작")
     all_reviews = []
