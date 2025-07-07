@@ -44,10 +44,10 @@ myvenv/
 env/
 venv/
 ENV/
-gr/
-ys/
-hj/
-mj/
+teamenv/gr/
+teamenv/ys/
+teamenv/hj/
+teamenv/mj/
 env.bak/
 venv.bak/
 myvenv.bak/
