@@ -35,7 +35,7 @@ def generate_html(product: dict) -> dict:
     response = client.chat.completions.create(
         model="gpt-4.1-mini",
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.6
+        temperature=0.9
     )
     logger.info("✅ OpenAI API 응답 수신 완료")
 

@@ -36,13 +36,25 @@ pip-delete-this-directory.txt
 # Virtual Environment
 .env
 .venv
+.gr
+.ys
+.hj
+.mj
 myvenv/
 env/
 venv/
 ENV/
+gr/
+ys/
+hj/
+mj/
 env.bak/
 venv.bak/
 myvenv.bak/
+gr.bak/
+ys.bak/
+hj.bak/
+mj.bak/
 input_venv/
 myenv/
 

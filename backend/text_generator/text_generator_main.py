@@ -17,7 +17,7 @@ def text_generator_main():
 
     with open(os.path.join(output_path, "result-css.html"), "w", encoding="utf-8") as f:
         f.write(result["html_text"])
-        logger.info(f"📁 HTML 상세페이지 저장 완료: {output_path}/result-css.html")
+        logger.info(f"✅ HTML 상세페이지 저장 완료")
 
 
 if __name__ == "__main__":
