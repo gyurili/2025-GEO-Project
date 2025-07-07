@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 load_dotenv()
-
 import os
 import sys
 from openai import OpenAI
@@ -26,18 +25,18 @@ def generate_html(product: dict) -> dict:
         expert_quote_prompt(),
         fluent_prompt(),
         expand_product_details(),
-        apply_css(),
+        css_friendly_prompt(),
         "모든 정보를 HTML로 출력해주세요. 제공된 정보를 바탕으로 상세페이지를 풍성하고 길게 만들어주세요.",
         "결과는 <html> ~ </html> 태그 안에 있어야 합니다",
     ])
-    logger.info("✅ OpenAI 요청 시작")
+    logger.info("📄 OpenAI 요청 시작")
 
     response = client.chat.completions.create(
         model="gpt-4.1-mini",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.9
     )
-    logger.info("✅ OpenAI API 응답 수신 완료")
+    logger.info("📄 OpenAI API 응답 수신 완료")
 
     html_text = response.choices[0].message.content
     html_text = clean_response(html_text)

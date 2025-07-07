@@ -1,0 +1,99 @@
+/* Boxed Modern 스타일 */
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background-color: #f4f5f7;
+  margin: 0;
+  padding: 40px;
+  color: #1e1e1e;
+}
+
+.product-page {
+  background-color: #fff;
+  max-width: 860px;
+  margin: auto;
+  padding: 40px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+}
+
+.product-title {
+  font-size: 30px;
+  color: #0052cc;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.product-summary {
+  font-size: 17px;
+  color: #555;
+  margin-bottom: 25px;
+}
+
+.product-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+}
+.product-features li {
+  background-color: #eef2f7;
+  padding: 10px 15px;
+  border-radius: 20px;
+  font-size: 15px;
+  color: #333;
+}
+
+.product-section h2 {
+  font-size: 22px;
+  margin-top: 40px;
+  color: #333;
+  border-left: 4px solid #0052cc;
+  padding-left: 10px;
+}
+.product-section p {
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.product-faq {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 40px;
+}
+
+.product-faq .faq-item {
+  background-color: #f2f6fb;
+  border-radius: 12px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  border: 1px solid #dde5f0;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+.product-faq .faq-item:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+
+.product-faq .question {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e2a38;
+  margin-bottom: 10px;
+}
+
+.product-faq .answer {
+  font-size: 15px;
+  color: #444;
+  line-height: 1.6;
+}
+
+blockquote {
+  border-left: 4px solid #0052cc;
+  background-color: #f0f4ff;
+  padding: 12px 20px;
+  margin: 20px 0;
+  color: #333;
+}
