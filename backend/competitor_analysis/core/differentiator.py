@@ -1,6 +1,10 @@
 import openai
 import json
+import logging
 from typing import List, Dict
+
+# 로거 세팅 (서비스에선 utils.logger에서 가져와도 OK)
+logger = logging.getLogger(__name__)
 
 def summarize_competitor_reviews(
     reviews: List[str], 
@@ -8,8 +12,17 @@ def summarize_competitor_reviews(
     model: str = "gpt-4o"
 ) -> str:
     """
-    경쟁사 부정 리뷰들을 GPT로 요약해 한글 요약문을 반환 (openai 1.x+)
+    경쟁사 부정 리뷰들을 GPT로 요약해 한글 요약문을 반환한다.
+
+    Args:
+        reviews (List[str]): 경쟁사 리뷰 문자열 리스트.
+        openai_api_key (str): OpenAI API 키.
+        model (str): 사용할 GPT 모델명 (기본: "gpt-4o").
+
+    Returns:
+        str: 리뷰 요약 결과 (한글).
     """
+    logger.debug(f"🛠️ 리뷰 {len(reviews)}개에 대해 요약 시작 (model={model})")
     client = openai.OpenAI(api_key=openai_api_key)
     joined = "\n".join(reviews)
     prompt = (
@@ -17,13 +30,19 @@ def summarize_competitor_reviews(
         f"{joined}\n\n"
         "이 리뷰에서 자주 언급된 불만, 단점, 개선점만 한글로 간결히 요약해줘."
     )
-    res = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=256,
-        temperature=0.5
-    )
-    return res.choices[0].message.content.strip()
+    try:
+        res = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=256,
+            temperature=0.5
+        )
+        summary = res.choices[0].message.content.strip()
+        logger.info("✅ 경쟁사 리뷰 요약 완료")
+        return summary
+    except Exception as e:
+        logger.error(f"❌ 경쟁사 리뷰 요약 중 오류 발생: {e}")
+        return ""
 
 def generate_differentiators(
     product_input: Dict,
@@ -32,8 +51,19 @@ def generate_differentiators(
     model: str = "gpt-4o"
 ) -> Dict:
     """
-    내 상품 특징과 경쟁사 리뷰 요약을 합쳐 차별점(differences) 리스트 딕셔너리 생성 (openai 1.x+)
+    내 상품 특징과 경쟁사 리뷰 요약을 GPT에 입력하여 
+    차별점(differences) 리스트 딕셔너리를 생성한다.
+
+    Args:
+        product_input (Dict): 내 상품 정보 딕셔너리 (features, name 필수).
+        competitor_summary (str): 경쟁사 리뷰 요약문 (한글).
+        openai_api_key (str): OpenAI API 키.
+        model (str): 사용할 GPT 모델명 (기본: "gpt-4o").
+
+    Returns:
+        Dict: {"differences": [차별점1, 차별점2, ...]} 구조 딕셔너리
     """
+    logger.debug("🛠️ 차별점 생성 시작 (generate_differentiators)")
     client = openai.OpenAI(api_key=openai_api_key)
     features = product_input.get('features', '')
     name = product_input.get('name', '')
@@ -45,19 +75,26 @@ def generate_differentiators(
         "문장은 온점과 ~다로 끝나는게 아닌 ~가능, ~해결 등 명사형으로 끝내줘."
         "아래와 같이 JSON 딕셔너리로 반환해줘. 예시: {\"differences\": [\"...\", \"...\"]}"
     )
-    res = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=256,
-        temperature=0.7
-    )
-    content = res.choices[0].message.content.strip()
-    # JSON 파싱 시도
     try:
-        start = content.find('{')
-        end = content.rfind('}') + 1
-        return json.loads(content[start:end])
-    except Exception:
-        # 파싱 실패 시 단순 리스트 반환
-        lines = [line.strip('-• ').strip() for line in content.split('\n') if line.strip()]
-        return {"differences": lines}
+        res = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=256,
+            temperature=0.7
+        )
+        content = res.choices[0].message.content.strip()
+        logger.debug(f"🛠️ 차별점 원문 응답: {content}")
+        # JSON 파싱
+        try:
+            start = content.find('{')
+            end = content.rfind('}') + 1
+            diff_dict = json.loads(content[start:end])
+            logger.info("✅ 차별점 JSON 파싱 성공")
+            return diff_dict
+        except Exception as json_err:
+            logger.warning(f"⚠️ JSON 파싱 실패, 리스트 변환 시도: {json_err}")
+            lines = [line.strip('-• ').strip() for line in content.split('\n') if line.strip()]
+            return {"differences": lines}
+    except Exception as e:
+        logger.error(f"❌ 차별점 생성 중 오류 발생: {e}")
+        return {"differences": []}

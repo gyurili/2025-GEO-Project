@@ -12,16 +12,29 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# 쿠팡 상품 링크 정제 함수
 def clean_coupang_url(url: str) -> str:
+    """
+    쿠팡 상품 상세 URL을 정제해 표준 형태로 반환한다.
+
+    Args:
+        url (str): 원본 쿠팡 상품 링크.
+
+    Returns:
+        str: 정제된 상품 상세페이지 URL.
+    """
     logger.debug(f"🛠️ 쿠팡 상품 링크 정제: {url}")
     match = re.search(r"(https://www\.coupang\.com/vp/products/\d+)", url)
     result = match.group(1) if match else url
     logger.debug(f"🛠️ 정제된 링크: {result}")
     return result
 
-# 드라이버 초기화
 def init_safe_driver():
+    """
+    셀레니움 undetected_chromedriver를 크롬 옵션과 함께 초기화하여 드라이버 객체를 반환한다.
+
+    Returns:
+        uc.Chrome: 초기화된 Selenium 크롬 드라이버 객체.
+    """
     logger.debug("🛠️ 드라이버 초기화 시작")
     ua = UserAgent()
     user_agent = ua.chrome
@@ -37,23 +50,29 @@ def init_safe_driver():
     logger.info("✅ 드라이버 실행 성공")
     return driver
 
-# 리뷰 필터 클릭
 def click_review_filter(driver, label: str) -> bool:
+    """
+    리뷰 필터 드롭다운에서 지정된 라벨의 항목을 클릭한다.
+
+    Args:
+        driver: Selenium 드라이버 객체.
+        label (str): 클릭할 필터 라벨명(예: "나쁨", "별로").
+
+    Returns:
+        bool: 클릭 성공 여부.
+    """
     logger.debug(f"🛠️ 리뷰 필터 클릭 시도: {label}")
     try:
-        # 1. 드롭다운 화살표 클릭
         dropdown_trigger = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.CSS_SELECTOR, "div.review-star-search-current-selection"))
         )
         dropdown_trigger.click()
         time.sleep(1)
 
-        # 2. 필터 목록이 펼쳐질 때까지 대기
         WebDriverWait(driver, 5).until(
             EC.visibility_of_element_located((By.CLASS_NAME, "review-star-search-selector"))
         )
 
-        # 3. 리스트 아이템 중 label 해당 항목 클릭
         filter_box = driver.find_element(By.CLASS_NAME, "review-star-search-selector")
         items = filter_box.find_elements(By.CSS_SELECTOR, "li")
         found = False
@@ -80,8 +99,17 @@ def click_review_filter(driver, label: str) -> bool:
 
     return False
 
-# 부정 리뷰 크롤링 (페이지네이션)
 def crawl_bad_reviews(driver, max_reviews: int) -> List[str]:
+    """
+    현재 상품 상세페이지에서 부정 리뷰(나쁨/별로)를 최대 max_reviews개까지 크롤링한다.
+
+    Args:
+        driver: Selenium 드라이버 객체.
+        max_reviews (int): 최대 수집 리뷰 개수.
+
+    Returns:
+        List[str]: 리뷰 본문 텍스트 리스트.
+    """
     logger.debug("🛠️ 부정 리뷰 크롤링 시작")
     reviews = []
     page = 1
@@ -113,8 +141,18 @@ def crawl_bad_reviews(driver, max_reviews: int) -> List[str]:
         logger.info(f"✅ 부정 리뷰 {len(reviews)}개 크롤링 완료")
     return reviews
 
-# 단일 상품 상세 페이지에서 리뷰 수집
 def crawl_reviews_by_link(driver, url: str, max_reviews: int = 30) -> List[str]:
+    """
+    상품 상세페이지 URL에서 부정 리뷰만 최대 max_reviews개까지 크롤링한다.
+
+    Args:
+        driver: Selenium 드라이버 객체.
+        url (str): 상품 상세페이지 URL.
+        max_reviews (int): 최대 수집 리뷰 개수.
+
+    Returns:
+        List[str]: 리뷰 본문 텍스트 리스트.
+    """
     url = clean_coupang_url(url)
     logger.debug(f"🛠️ 리뷰 수집 시작: {url}")
     try:
@@ -135,8 +173,21 @@ def crawl_reviews_by_link(driver, url: str, max_reviews: int = 30) -> List[str]:
         logger.error(f"❌ 리뷰 수집 실패: {e}")
         return []
 
-# 카테고리 검색 결과에서 N개 상품에 대해 리뷰 수집
-def crawl_reviews_by_category(category: str, max_products: int = 3, max_reviews_per_product: int = 10) -> List[str]:
+def crawl_reviews_by_category(
+    category: str, max_products: int = 3, max_reviews_per_product: int = 10
+) -> List[str]:
+    """
+    쿠팡에서 특정 카테고리 검색 결과 상위 N개 상품에 대해
+    부정 리뷰를 각각 최대 M개까지 수집 후, 전체 리스트로 반환한다.
+
+    Args:
+        category (str): 검색 키워드(카테고리).
+        max_products (int): 최대 크롤링할 상품 개수.
+        max_reviews_per_product (int): 상품별 최대 리뷰 수.
+
+    Returns:
+        List[str]: 모든 상품에서 크롤링된 부정 리뷰 리스트.
+    """
     logger.debug(f"🛠️ 카테고리 '{category}'로 리뷰 크롤링 시작")
     all_reviews = []
     driver = init_safe_driver()
