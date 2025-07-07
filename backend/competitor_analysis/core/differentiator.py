@@ -1,10 +1,10 @@
 import openai
 import json
-import logging
 from typing import List, Dict
+from utils.logger import get_logger
 
 # 로거 세팅 (서비스에선 utils.logger에서 가져와도 OK)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def summarize_competitor_reviews(
     reviews: List[str], 
