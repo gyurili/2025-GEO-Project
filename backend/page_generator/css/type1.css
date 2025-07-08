@@ -1,4 +1,3 @@
-/* Boxed Modern 스타일 */
 body {
   font-family: 'Noto Sans KR', sans-serif;
   background-color: #f4f5f7;
@@ -91,7 +90,7 @@ body {
 }
 
 blockquote {
-  border-left: 4px solid #0052cc;
+  border-left: 4px solid #3987fc66;
   background-color: #f0f4ff;
   padding: 12px 20px;
   margin: 20px 0;
