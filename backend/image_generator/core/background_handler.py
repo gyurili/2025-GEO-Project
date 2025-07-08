@@ -49,7 +49,12 @@ class BackgroundHandler:
                 logger.error(f"❌ 배경 제거를 위한 입력 이미지 객체가 None입니다.")
                 return None
             
-            output_image = remove(input_image, alpha_matting=True, bgcolor=(0, 0, 0, 0))
+            output_image = remove(input_image, 
+                                  alpha_matting=True, 
+                                  bgcolor=(0, 0, 0, 0),
+                                  alpha_matting_foreground_threshold=255,
+                                  alpha_matting_background_threshold=0,
+                                  alpha_matting_erode_size=100)
             
             os.makedirs(output_dir, exist_ok=True)
 
@@ -182,15 +187,15 @@ class BackgroundHandler:
 
 
 class Txt2ImgGenerator:
-    def __init__(self, model):
+    def __init__(self, pipeline):
         logger.debug("🛠️ Txt2ImgGenerator 초기화 시작")
-        self.model = model  # DiffusionPipeline
+        self.pipeline = pipeline  # DiffusionPipeline
         logger.info("✅ Txt2ImgGenerator 초기화 완료")
 
     def generate_background(self, prompt: str, size=(512, 512)) -> Image.Image:
         try:
             logger.debug(f"🛠️ 프롬프트로 배경 생성: {prompt}")
-            image = self.model(prompt, height=size[1], width=size[0]).images[0]
+            image = self.pipeline(prompt, height=size[1], width=size[0]).images[0]
             logger.info(f"✅ 배경 이미지 생성 완료")
             save_path = "backend/data/output/txt2img.png"
             image.save(save_path)
