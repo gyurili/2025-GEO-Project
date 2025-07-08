@@ -222,7 +222,7 @@ class Txt2ImgGenerator:
         try:
             logger.debug(f"🛠️ 프롬프트로 배경 생성: {prompt}")
             image = self.pipeline(
-                pormpt=prompt,
+                prompt=prompt,
                 negative_prompt=negative_prompt,
                 height=size[1], 
                 width=size[0],
