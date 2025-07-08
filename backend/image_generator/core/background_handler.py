@@ -228,6 +228,7 @@ class Txt2ImgGenerator:
                 width=size[0],
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
+                num_images_per_prompt=1
             ).images[0]
             logger.info(f"✅ 배경 이미지 생성 완료")
             save_path = "backend/data/output/txt2img.png"
