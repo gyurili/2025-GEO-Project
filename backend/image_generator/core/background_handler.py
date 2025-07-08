@@ -55,6 +55,13 @@ class BackgroundHandler:
                                   alpha_matting_foreground_threshold=255,
                                   alpha_matting_background_threshold=0,
                                   alpha_matting_erode_size=100)
+
+            if output_image.getbbox():
+                logger.debug("🛠️ 제거된 배경에 맞게 사이즈 조정")
+                output_image = output_image.crop(output_image.getbbox())
+            else:
+                logger.warning("⚠️ 배경 제거 후 이미지가 비어있습니다. 원본 이미지가 투명 배경이 아닌지 확인하세요.")
+                return None
             
             os.makedirs(output_dir, exist_ok=True)
 
@@ -77,7 +84,7 @@ class BackgroundHandler:
             foreground_image: Image.Image, 
             color: tuple, 
             original_filename: str, 
-            output_dir: str = "backend/data/output"
+            output_dir: str = "backend/data/output",
         ) -> Image.Image:
         """
         투명 배경을 가진 이미지에 단색 배경을 추가합니다.
@@ -131,10 +138,13 @@ class BackgroundHandler:
             background_image: Image.Image, # 배경 이미지 객체를 직접 받음
             original_filename: str, # 전경 이미지의 원본 파일명
             background_filename: str, # 배경 이미지의 베이스 파일명 (예: "texture.jpg")
-            output_dir: str = "backend/data/output"
+            output_dir: str = "backend/data/output",
+            position: tuple = (0.5, 0.55), 
+            max_scale: float = 0.5,
         ) -> Image.Image:
         """
-        투명 배경을 가진 이미지에 다른 이미지 객체를 배경으로 추가합니다.
+        배경 이미지에 제품 이미지를 비율 기반 위치에 삽입합니다.
+        제품 이미지가 배경보다 클 경우 자동 리사이즈/크롭.
 
         Args:
             foreground_image (PIL.Image.Image): 배경을 추가할 전경 이미지 객체 (RGBA 모드).
@@ -144,6 +154,8 @@ class BackgroundHandler:
                                         출력 파일명 생성에 사용됩니다.
             output_dir (str, optional): 결과 이미지를 저장할 디렉토리 경로.
                                         기본값은 'backend/data/output/'.
+            position (tuple): (0.0~1.0, 0.0~1.0) (width, height) 기준으로 배치할 상대 좌표.
+            max_scale (float): 제품 이미지의 최대 크기를 배경의 몇 %로 제한할지.
 
         Returns:
             PIL.Image.Image: 이미지 배경이 추가된 이미지 객체 (RGB 모드). 오류 발생시 None 반환.
@@ -153,7 +165,6 @@ class BackgroundHandler:
             if foreground_image is None:
                 logger.error(f"❌ 이미지 배경 추가를 위한 전경 이미지 객체가 None입니다.")
                 return None
-            
             if foreground_image.mode != 'RGBA':
                 logger.warning("⚠️ 전경 이미지가 RGBA 모드가 아닙니다. 투명도 정보가 손실될 수 있습니다.")
                 foreground_image = foreground_image.convert('RGBA')
@@ -161,26 +172,44 @@ class BackgroundHandler:
             if background_image is None:
                 logger.error(f"❌ 이미지 배경 추가를 위한 배경 이미지 객체가 None입니다.")
                 return None
+            if background_image.mode != 'RGBA':
+                logger.warning("⚠️ 배경 이미지가 RGBA 모드가 아닙니다. 투명도 정보가 손실될 수 있습니다.")
+                background_image = background_image.convert('RGBA')
 
-            # 배경 이미지를 전경 이미지 크기에 맞게 리사이즈
-            background_image = background_image.resize(foreground_image.size, Image.LANCZOS).convert('RGB')
+            fg_w, fg_h = foreground_image.size
+            bg_w, bg_h = background_image.size
+
+            scale_w = max_scale * bg_w / fg_w
+            scale_h = max_scale * bg_h / fg_h
+            scale_factor = min(scale_w, scale_h, 1.0)
+
+            # 제품 이미지가 배경보다 큰 경우 리사이즈
+            if scale_factor < 1.0:
+                logger.warning(f"⚠️ 제품 이미지 크기가 배경보다 큽니다. 리사이즈를 진행합니다.")
+                new_size = (int(fg_w * scale_factor), int(fg_h * scale_factor))
+                foreground_image = foreground_image.resize(new_size, Image.LANCZOS)
+                logger.debug(f"✅ 제품 이미지 리사이즈 완료. 새 크기: {foreground_image.size}")
+
+            x_ratio, y_ratio = position
+            x = int(bg_w * x_ratio - foreground_image.width / 2)
+            y = int(bg_h * y_ratio - foreground_image.height / 2)
 
             # 최종 이미지 생성
-            final_image = Image.new('RGB', foreground_image.size)
-            final_image.paste(background_image, (0, 0))
-            final_image.paste(foreground_image, (0, 0), foreground_image)
+            final_image = background_image.copy()
+            final_image.paste(foreground_image, (x, y), foreground_image)
 
             os.makedirs(output_dir, exist_ok=True)
 
             name_without_ext, _ = os.path.splitext(original_filename)
             bg_name_without_ext, _ = os.path.splitext(background_filename)
-            filename = f"{name_without_ext}_bg_with_{bg_name_without_ext}.png"
+            filename = f"{name_without_ext}_on_{bg_name_without_ext}.png"
             
             save_path = os.path.join(output_dir, filename)
             final_image.save(save_path)
 
             logger.info(f"✅ 이미지 배경 추가 완료. 결과 이미지가 {save_path}에 저장되었습니다.")
             return final_image
+
         except Exception as e:
             logger.error(f"❌ 이미지 배경 추가 중 오류 발생: {e}")
             return None
