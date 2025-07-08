@@ -192,10 +192,43 @@ class Txt2ImgGenerator:
         self.pipeline = pipeline  # DiffusionPipeline
         logger.info("✅ Txt2ImgGenerator 초기화 완료")
 
-    def generate_background(self, prompt: str, size=(512, 512)) -> Image.Image:
+    def generate_background(
+            self, 
+            prompt: str,
+            negative_prompt: str = None,
+            size=(1024, 1024),
+            num_inference_steps: int = 50, # 샘플링 단계 수
+            guidance_scale: float = 7.5, # 안내 척도 (CFG Scale)
+        ) -> Image.Image:
+        """
+        주어진 프롬프트를 사용하여 배경 이미지를 생성합니다.
+
+        Args:
+            prompt (str): 이미지를 생성할 긍정 프롬프트.
+            negative_prompt (str, optional): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
+                                            기본값은 None.
+            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (1024, 1024).
+            num_inference_steps (int, optional): 이미지 생성에 사용할 샘플링 단계 수.
+                                                값이 높을수록 품질은 좋아지지만 시간이 오래 걸릴 수 있습니다.
+                                                기본값은 50.
+            guidance_scale (float, optional): Classifier-Free Guidance (CFG) 척도.
+                                            프롬프트에 얼마나 충실하게 이미지를 생성할지 조절합니다.
+                                            값이 높을수록 프롬프트에 더 충실하지만, 다양성이 줄어들 수 있습니다.
+                                            기본값은 7.5.
+
+        Returns:
+            PIL.Image.Image: 생성된 이미지 객체. 오류 발생 시 None 반환.
+        """
         try:
             logger.debug(f"🛠️ 프롬프트로 배경 생성: {prompt}")
-            image = self.pipeline(prompt, height=size[1], width=size[0]).images[0]
+            image = self.pipeline(
+                pormpt=prompt,
+                negative_prompt=negative_prompt,
+                height=size[1], 
+                width=size[0],
+                num_inference_steps=num_inference_steps,
+                guidance_scale=guidance_scale,
+            ).images[0]
             logger.info(f"✅ 배경 이미지 생성 완료")
             save_path = "backend/data/output/txt2img.png"
             image.save(save_path)
