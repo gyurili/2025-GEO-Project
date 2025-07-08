@@ -28,11 +28,12 @@ def generate_background_prompt(product: dict) -> str | None:
     try:
         system_prompt = (
             "You are a background prompt designer for AI image generation. "
-            "Based on the following product information in Korean, write an English prompt "
-            "for generating a product background image. "
-            "Focus on the mood, space, tone, and elements that match the product. "
+            "Based on the following product information in Korean, write an English prompt for generating a product background image. "
+            "Focus on the mood, space, tone, and elements that match the product."
             "Do not include the product itself, only the background setting. "
             "Make sure to describe only one unified scene. Do not describe multiple spaces or perspectives. "
+            "Use a simple, uncluttered, and visually minimal background so that the product can stand out clearly. "
+            "Avoid describing too many objects or excessive detail in the background. "
             "Keep it under 30 words."
         )
 
