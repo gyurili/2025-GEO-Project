@@ -2,17 +2,28 @@ import os
 import sys
 
 from utils.logger import get_logger
-from .image_loader import ImageLoader
-from .background_handler import BackgroundHandler
+from .core.image_loader import ImageLoader
+from .core.background_handler import BackgroundHandler
+from .core.prompt_builder import generate_background_prompt, generate_negative_prompt
+
+'''
+TODO: 상품명, 카테고리, 특징, 이미지패스, 상품링크, 차별점을 바탕으로 이미지 재구성
+TODO: 이미지를 임시로 데이터 아웃풋에 저장 이후 삭제
+'''
 
 logger = get_logger(__name__)
 
+# def image_generator_main(config, product_info, differences):
+    
+#     image_data = {"image_path": "data/output/example.jpg"}
+#     return image_data
+
 def image_generator_main(
+    product: dict,
     input_image_path: str, 
     output_dir: str = "backend/data/output/",
     background_image_path: str = None,
-    config: dict = None
-):
+)-> dict | bool:
     """
     이미지 제너레이터 메인
     """
@@ -59,7 +70,7 @@ def image_generator_main(
 
     logger.info("✅ 단색 배경 추가 및 저장 성공.")
 
-        # 4. 이미지 배경 추가 (선택적 실행)
+    # 4. 이미지 배경 추가
     if background_image_path:
         logger.debug(f"🛠️ 이미지 배경 추가 시작")
         bg_image, bg_filename = image_loader.load_image(
@@ -79,4 +90,14 @@ def image_generator_main(
             if image_with_bg is None:
                 logger.error("❌ 이미지 배경 추가에 실패했습니다. 처리를 중단합니다.")
             logger.info("✅ 이미지 배경 추가 및 저장 성공.")
-    return True
+
+    # 5. 프롬프트 생성
+    logger.debug(f"🛠️ 배경 프롬프트 생성 시작")
+    prompt = generate_background_prompt(product)
+    neg_prompt = generate_negative_prompt(product)
+    if not prompt:
+        logger.error("❌ 프롬프트 생성에 실패했습니다. 처리를 중단합니다.")
+        return False
+    
+    return {"prompt": prompt, "negative_prompt": neg_prompt}
+
