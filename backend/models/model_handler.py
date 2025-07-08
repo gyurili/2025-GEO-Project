@@ -1,10 +1,13 @@
 import os
 import torch
+from dotenv import load_dotenv
 from diffusers import DiffusionPipeline
 from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+load_dotenv()
 
 MODEL_LOADERS = {
     "diffusion": DiffusionPipeline,
@@ -39,19 +42,24 @@ def download_model(
     model_save_path = os.path.join(save_dir, model_name_for_path)
 
     if os.path.exists(model_save_path) and os.listdir(model_save_path):
-        logger.info(f"✅ 모델 {model_id}이(가) 이미 {save_dir}에 존재합니다.")
+        logger.info(f"✅ 모델 {model_id}이(가) 이미 {save_dir}에 존재")
         return model_save_path
 
-    logger.debug(f"🛠️ 모델 {model_id}를 {save_dir}에 다운로드")
+    logger.debug(f"🛠️ 모델 {model_id}를 {save_dir}에 다운로드 시작")
+
+    token = os.getenv("HF_TOKEN")
+    if token is None:
+        logger.warning("⚠️ Hugging Face API 토큰(HF_TOKEN)이 .env에 정의되어 있지 않습니다.")
+        return None
 
     # GPU체크
     load_kwargs = {}
     if torch.cuda.is_available():
         load_kwargs["torch_dtype"] = torch.float16
-        logger.info("✅ GPU를 사용하여 모델을 로드합니다.")
+        logger.info("✅ GPU를 사용하여 모델을 로드")
     else: 
         load_kwargs["torch_dtype"] = torch.float32
-        logger.info("✅ CPU를 사용하여 모델을 로드합니다.")
+        logger.info("✅ CPU를 사용하여 모델을 로드")
 
     if model_type == "diffusion":
         load_kwargs["device_map"] = "balanced"
@@ -60,10 +68,10 @@ def download_model(
 
     try:
         loader_cls = MODEL_LOADERS[model_type]
-        model = loader_cls.from_pretrained(model_id, **load_kwargs)
+        model = loader_cls.from_pretrained(model_id, token=token, **load_kwargs)
 
         model.save_pretrained(model_save_path)
-        logger.info(f"✅ 모델 '{model_id}'이(가) '{model_save_path}'에 저장됨")
+        logger.info(f"✅ 모델 '{model_id}'이(가) '{model_save_path}'에 저장")
         return model_save_path
 
     except Exception as e:
@@ -96,10 +104,10 @@ def load_model(
     load_kwargs = {}
     if torch.cuda.is_available():
         load_kwargs["torch_dtype"] = torch.float16
-        logger.info("✅ GPU를 사용하여 모델을 로드합니다.")
+        logger.info("✅ GPU를 사용하여 모델을 로드")
     else: 
         load_kwargs["torch_dtype"] = torch.float32
-        logger.info("✅ CPU를 사용하여 모델을 로드합니다.")
+        logger.info("✅ CPU를 사용하여 모델을 로드")
 
     if model_type == "diffusion":
         load_kwargs["device_map"] = "balanced"
@@ -108,7 +116,7 @@ def load_model(
 
     try:
         model = MODEL_LOADERS[model_type].from_pretrained(model_path, **load_kwargs)
-        logger.info(f"✅ 모델이 '{model_path}'에서 성공적으로 로드되었습니다.")
+        logger.info(f"✅ 모델이 '{model_path}'에서 로드")
         return model
     except Exception as e:
         logger.error(f"❌ 모델 로딩 중 오류 발생: {e}")

@@ -7,6 +7,7 @@ from utils.logger import get_logger
 from .image_loader import ImageLoader
 
 logger = get_logger(__name__)
+
 """
 TODO: rembg의 파라미터 확인 후에 배경제거가 잘 되는 것으로 수정 필요
 """
@@ -60,7 +61,7 @@ class BackgroundHandler:
             save_path = os.path.join(output_dir, filename)
             output_image.save(save_path)
 
-            logger.info(f"✅ 배경 제거 완료. 결과 이미지가 {output_dir}에 저장되었습니다.")
+            logger.info(f"✅ 배경 제거 완료. 결과 이미지가 {save_path}에 저장되었습니다.")
             return output_image
         except Exception as e:
             logger.error(f"❌ 배경 제거 중 오류 발생: {e}")
@@ -177,4 +178,24 @@ class BackgroundHandler:
             return final_image
         except Exception as e:
             logger.error(f"❌ 이미지 배경 추가 중 오류 발생: {e}")
+            return None
+
+
+class Txt2ImgGenerator:
+    def __init__(self, model):
+        logger.debug("🛠️ Txt2ImgGenerator 초기화 시작")
+        self.model = model  # DiffusionPipeline
+        logger.info("✅ Txt2ImgGenerator 초기화 완료")
+
+    def generate_background(self, prompt: str, size=(512, 512)) -> Image.Image:
+        try:
+            logger.debug(f"🛠️ 프롬프트로 배경 생성: {prompt}")
+            image = self.model(prompt, height=size[1], width=size[0]).images[0]
+            logger.info(f"✅ 배경 이미지 생성 완료")
+            save_path = "backend/data/output/txt2img.png"
+            image.save(save_path)
+            logger.info(f"✅ 배경 이미지가 {save_path}에 생성되었습니다.")
+            return image
+        except Exception as e:
+            logger.error(f"❌ 텍스트-이미지 생성 중 오류 발생: {e}")
             return None

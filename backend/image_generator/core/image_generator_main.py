@@ -59,7 +59,7 @@ def image_generator_main(
 
     logger.info("✅ 단색 배경 추가 및 저장 성공.")
 
-        # 4. 이미지 배경 추가 (선택적 실행)
+    # 4. 이미지 배경 추가
     if background_image_path:
         logger.debug(f"🛠️ 이미지 배경 추가 시작")
         bg_image, bg_filename = image_loader.load_image(
