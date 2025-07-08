@@ -4,8 +4,8 @@ import os
 import sys
 from openai import OpenAI
 from utils.logger import get_logger
-from core.cleaner import clean_response
-from core.prompt_builder import *
+from backend.text_generator.core.cleaner import clean_response
+from backend.text_generator.core.prompt_builder import *
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 logger = get_logger(__name__)
