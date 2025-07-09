@@ -87,3 +87,8 @@ def generate_negative_prompt(product: dict) -> str | None:
     except Exception as e:
         logger.error(f"❌ 네거티브 프롬프트 생성 실패: {e}")
         return None
+
+def generate_prompts(product: dict) -> dict:
+    bg_prompt = generate_background_prompt(product)
+    ng_prompt = generate_negative_prompt(product)
+    return {"background_prompt": bg_prompt, "negative_prompt": ng_prompt}

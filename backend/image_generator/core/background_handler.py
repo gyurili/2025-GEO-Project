@@ -263,7 +263,7 @@ class Txt2ImgGenerator:
             save_path = "backend/data/output/txt2img.png"
             image.save(save_path)
             logger.info(f"✅ 배경 이미지가 {save_path}에 생성되었습니다.")
-            return image
+            return image, save_path
         except Exception as e:
             logger.error(f"❌ 텍스트-이미지 생성 중 오류 발생: {e}")
             return None
