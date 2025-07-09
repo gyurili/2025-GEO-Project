@@ -227,6 +227,7 @@ uploads/
 downloads/
 output/
 result/
+/local_models/
 
 # LSP config files
 pyrightconfig.json

@@ -56,12 +56,12 @@ class BackgroundHandler:
                                   alpha_matting_background_threshold=0,
                                   alpha_matting_erode_size=100)
 
-            if output_image.getbbox():
-                logger.debug("🛠️ 제거된 배경에 맞게 사이즈 조정")
-                output_image = output_image.crop(output_image.getbbox())
-            else:
-                logger.warning("⚠️ 배경 제거 후 이미지가 비어있습니다. 원본 이미지가 투명 배경이 아닌지 확인하세요.")
-                return None
+            # if output_image.getbbox():
+            #     logger.debug("🛠️ 제거된 배경에 맞게 사이즈 조정")
+            #     output_image = output_image.crop(output_image.getbbox())
+            # else:
+            #     logger.warning("⚠️ 배경 제거 후 이미지가 비어있습니다. 원본 이미지가 투명 배경이 아닌지 확인하세요.")
+            #     return None
             
             os.makedirs(output_dir, exist_ok=True)
 
@@ -131,6 +131,51 @@ class BackgroundHandler:
         except Exception as e:
             logger.error(f"❌ 단색 배경 추가 중 오류 발생: {e}")
             return None
+
+    def create_mask_from_alpha(
+            self,
+            transparent_image: Image.Image,
+            original_filename: str,
+            output_dir: str = "backend/data/output/"
+        ) -> Image.Image:
+        """
+        투명 배경 이미지에서 alpha 채널을 기반으로 inpainting용 마스크를 생성
+        (제품 영역은 검정, 배경은 흰색)
+
+        Args:
+            transparent_image (PIL.Image.Image): 배경이 제거된 RGBA 이미지
+            original_filename (str): 원본 파일명
+            output_dir (str): 저장 경로
+
+        Returns:
+            PIL.Image.Image: 마스크 이미지 (mode=L), 배경은 흰색(255), 제품은 검정(0)
+        """
+        try:
+            logger.debug("🛠️ 마스크 이미지 생성 시작")
+
+            if transparent_image.mode != 'RGBA':
+                transparent_image = transparent_image.convert("RGBA")
+
+            # alpha 채널 추출 (투명도 → 제품은 불투명, 배경은 투명)
+            alpha = transparent_image.getchannel("A")
+
+            # 마스크 생성: 배경(투명, alpha=0)은 흰색(255), 제품(불투명, alpha>0)은 검정(0)
+            mask = alpha.point(lambda p: 255 if p == 0 else 0).convert("L")
+
+            # 저장
+            os.makedirs(output_dir, exist_ok=True)
+            name_without_ext, _ = os.path.splitext(original_filename)
+            filename = f"{name_without_ext}_mask.png"
+            save_path = os.path.join(output_dir, filename)
+            mask.save(save_path)
+
+            logger.info(f"✅ 마스크 이미지 생성 완료: {save_path}")
+            return mask
+
+        except Exception as e:
+            logger.error(f"❌ 마스크 생성 중 오류 발생: {e}")
+            return None
+
 
     def add_image_background(
             self, 
@@ -263,7 +308,82 @@ class Txt2ImgGenerator:
             save_path = "backend/data/output/txt2img.png"
             image.save(save_path)
             logger.info(f"✅ 배경 이미지가 {save_path}에 생성되었습니다.")
-            return image
+            return image, save_path
+        except Exception as e:
+            logger.error(f"❌ 텍스트-이미지 생성 중 오류 발생: {e}")
+            return None
+
+
+class Img2ImgGenerator:
+    def __init__(self, pipeline):
+        logger.debug("🛠️ Img2ImgGenerator 초기화 시작")
+        self.pipeline = pipeline  # DiffusionPipeline
+        logger.info("✅ Img2ImgGenerator 초기화 완료")
+
+    def generate_img(
+            self, 
+            prompt: str,
+            init_image: Image.Image,
+            mask_image: Image.Image,
+            negative_prompt: str = None,
+            size=(1024, 1024),
+            num_inference_steps: int = 50, # 샘플링 단계 수
+            guidance_scale: float = 7.5, # 안내 척도 (CFG Scale)
+        ) -> Image.Image:
+        """
+        주어진 이미지와 마스크 이미지, 프롬프트를 이용하여 이미지를 생성합니다.
+
+        Args:
+            prompt (str): 이미지를 생성할 긍정 프롬프트.
+            init_image (PIL.Image.Image): 기반이 되는 이미지
+            mask_image (PIL.Image.Image): 재생성할 곳을 표시하는 마스크 이미지
+            negative_prompt (str, optional): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
+                                            기본값은 None.
+            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (1024, 1024).
+            num_inference_steps (int, optional): 이미지 생성에 사용할 샘플링 단계 수.
+                                                값이 높을수록 품질은 좋아지지만 시간이 오래 걸릴 수 있습니다.
+                                                기본값은 50.
+            guidance_scale (float, optional): Classifier-Free Guidance (CFG) 척도.
+                                            프롬프트에 얼마나 충실하게 이미지를 생성할지 조절합니다.
+                                            값이 높을수록 프롬프트에 더 충실하지만, 다양성이 줄어들 수 있습니다.
+                                            기본값은 7.5.
+
+        Returns:
+            PIL.Image.Image: 생성된 이미지 객체. 오류 발생 시 None 반환.
+        """
+        # RGBA → RGB
+        if init_image.mode != 'RGB':
+            logger.warning("⚠️ init_image를 RGB로 변환")
+            init_image = init_image.convert("RGB")
+
+        # 마스크 이미지 → 흑백 'L' 모드
+        if mask_image.mode != 'L':
+            logger.warning("⚠️ mask_image를 L (grayscale) 모드로 변환")
+            mask_image = mask_image.convert("L")
+
+        # 크기 일치
+        if init_image.size != mask_image.size:
+            logger.warning("⚠️ 마스크 이미지 크기를 init_image와 맞춤")
+            mask_image = mask_image.resize(init_image.size)
+
+        try:
+            logger.debug(f"🛠️ 프롬프트로 배경 생성: {prompt}")
+            image = self.pipeline(
+                prompt=prompt,
+                image=init_image,
+                mask_image=mask_image,
+                negative_prompt=negative_prompt,
+                height=size[1], 
+                width=size[0],
+                num_inference_steps=num_inference_steps,
+                guidance_scale=guidance_scale,
+                num_images_per_prompt=1
+            ).images[0]
+            logger.info(f"✅ 이미지 생성 완료")
+            save_path = "backend/data/output/img2img.png"
+            image.save(save_path)
+            logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
+            return image, save_path
         except Exception as e:
             logger.error(f"❌ 텍스트-이미지 생성 중 오류 발생: {e}")
             return None
