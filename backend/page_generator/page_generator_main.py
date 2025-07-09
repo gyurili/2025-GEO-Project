@@ -1,6 +1,7 @@
 import os
 import sys
 import yaml
+import imgkit
 from utils.logger import get_logger
 from backend.page_generator.core.apply_template import apply_css_template
 
@@ -26,14 +27,15 @@ def page_generator_main(session_id: str):
     draft_html_filename = f"draft_{session_id}.html"
     draft_html_path = os.path.join(base_dir, "backend/data/output", draft_html_filename)
     
-    final_output_filename = f"final_{session_id}.html"
-    final_output_path = os.path.join(base_dir, "backend/data/result", final_output_filename)
+    #final_output_filename = f"final_{session_id}.html"
+    #final_output_path = os.path.join(base_dir, "backend/data/result", final_output_filename)
+    final_image_path = os.path.join(base_dir, "backend/data/result", f"final_{session_id}.png")
 
     # 원본 HTML 로드
     try:
-    with open(draft_html_path, "r", encoding="utf-8") as f:
-        draft_html = f.read()
-        logger.info("✅ 원본 HTML 로드 완료")
+        with open(draft_html_path, "r", encoding="utf-8") as f:
+            draft_html = f.read()
+            logger.info("✅ 원본 HTML 로드 완료")
     except FileNotFoundError:
         raise FileNotFoundError(f"❌ HTML 원본 파일을 찾을 수 없습니다: {draft_html_path}")
     except Exception as e:
@@ -46,13 +48,13 @@ def page_generator_main(session_id: str):
     except Exception as e:
         raise RuntimeError(f"❌ CSS 적용 실패: {e}")
 
-    # 최종 HTML 저장
+    # HTML → 이미지 저장
     try:
-        with open(final_output_path, "w", encoding="utf-8") as f:
-            f.write(final_html)
-            logger.info(f"✅ CSS 적용한 HTML 저장 완료: {final_output_path}")
+        config = imgkit.config(wkhtmltoimage='/usr/bin/wkhtmltoimage')
+        imgkit.from_string(final_html, final_image_path, config=config)
+        logger.info(f"✅ HTML → 이미지 변환 완료: {final_image_path}")
     except Exception as e:
-        raise RuntimeError(f"❌ 최종 HTML 저장 실패: {e}")
+        raise RuntimeError(f"❌ HTML → 이미지 변환 실패: {e}")
 
 
 if __name__ == "__main__":

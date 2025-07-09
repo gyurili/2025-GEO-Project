@@ -4,6 +4,9 @@
 openai
 pyyaml
 python-dotenv
+# sudo apt install wkhtmltopdf
+# sudo apt install fonts-noto-cjk
+imgkit
 
 # 이학진
 
