@@ -17,11 +17,11 @@ data:
 #  product_link: null
 
 input:
-  name: "우일 여성 여름 인견 7부 블라우스"
-  category: "블라우스"
-  price: 18000
-  brand: "우일"
-  features: "인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감"
+  name: "베이직 남성 회색 라운드 니트 스웨터"
+  category: "니트/스웨터"
+  price: 39800
+  brand: "베이직웨어"
+  features: "부드러운 촉감, 라운드 넥 디자인, 데일리 캐주얼 스타일, 보온성 우수"
   image_path: "data/input/product.jpg"
   product_link: "https://www.coupang.com/vp/products/example_id"
   css_type: 1
