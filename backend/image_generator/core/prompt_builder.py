@@ -27,14 +27,13 @@ def generate_background_prompt(product: dict) -> str | None:
     """
     try:
         system_prompt = (
-            "You are a background prompt designer for AI image generation. "
-            "Based on the following product information in Korean, write an English prompt for generating a product background image. "
-            "Focus on the mood, space, tone, and elements that match the product."
-            "Do not include the product itself, only the background setting. "
-            "Make sure to describe only one unified scene. Do not describe multiple spaces or perspectives. "
-            "Use a simple, uncluttered, and visually minimal background so that the product can stand out clearly. "
-            "Avoid describing too many objects or excessive detail in the background. "
-            "Keep it under 30 words."
+            "You are a background prompt designer for AI image generation.\n\n"
+            "Given the following product description in Korean, write an English prompt that describes a **simple and minimal background scene** to visually complement the product.\n\n"
+            "- Focus on a unified environment (e.g., 'a wooden kitchen table with warm morning light').\n"
+            "- Do **not** include the product itself.\n"
+            "- Avoid people, text, branding, or complex objects.\n"
+            "- Use neutral tones, clean surfaces, and natural lighting.\n"
+            "- Output should be one **concise** sentence, **under 30 words**."
         )
 
         user_prompt = build_prompt(product)
@@ -66,7 +65,7 @@ def generate_negative_prompt(product: dict) -> str | None:
             "You are a visual prompt engineer. Based on the product description in Korean, "
             "list elements that should NOT appear in the background so that the product stands out. "
             "Output a comma-separated English list of visual elements to avoid, such as objects, textures, or colors. "
-            "Do not include full sentences. Example: 'bottle, label, cream texture, hands, logo, skincare product'"
+            "Do not include full sentences. Example: 'bottle, label, cream texture, hands, logo, skincare product'."
         )
 
         user_prompt = build_prompt(product)  # 기존 제품 요약 한국어 문자열

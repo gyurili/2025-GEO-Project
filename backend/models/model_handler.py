@@ -1,7 +1,7 @@
 import os
 import torch
 from dotenv import load_dotenv
-from diffusers import DiffusionPipeline, AutoPipelineForText2Image
+from diffusers import DiffusionPipeline, AutoPipelineForText2Image, StableDiffusionXLInpaintPipeline, StableDiffusionInpaintPipeline
 from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
 from huggingface_hub import snapshot_download
 from utils.logger import get_logger
@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 load_dotenv()
 
 MODEL_LOADERS = {
-    "diffusion": AutoPipelineForText2Image,
+    "diffusion": StableDiffusionInpaintPipeline,
     "casual_lm": AutoModelForCausalLM,
     "encoder": AutoModel,
 }
