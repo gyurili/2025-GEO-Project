@@ -1,0 +1,12 @@
+# 김민준
+
+# 박규리
+openai
+pyyaml
+python-dotenv
+
+# 이학진
+
+# 정영선
+
+
