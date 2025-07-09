@@ -3,7 +3,6 @@ import json
 from typing import List, Dict
 from utils.logger import get_logger
 
-# 로거 세팅 (서비스에선 utils.logger에서 가져와도 OK)
 logger = get_logger(__name__)
 
 def summarize_competitor_reviews(
@@ -28,7 +27,8 @@ def summarize_competitor_reviews(
     prompt = (
         "아래는 경쟁사 상품에 대한 부정적 리뷰들입니다.\n\n"
         f"{joined}\n\n"
-        "이 리뷰에서 자주 언급된 불만, 단점, 개선점만 한글로 간결히 요약해줘."
+        "이 리뷰에서 반복적으로 언급된 불만, 단점, 개선점만 한글로 핵심 키워드 중심으로 3~7개 항목으로 리스트화해줘. "
+        "각 항목은 한글 20자 이내로 간결히 써줘. 예를 들어, '배터리 방전 문제', '블루투스 연결 불안정', '음질 저하', '착용감 불편' 등."
     )
     try:
         res = client.chat.completions.create(
