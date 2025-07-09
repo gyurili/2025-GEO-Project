@@ -48,13 +48,13 @@ def insert_review_summary(
         conn.commit()
         logger.info("✅ 리뷰 요약본 DB 저장 완료")
     except Exception as e:
-        logger.error(f"❌ 리뷰 요약본 저장 실패: {e}")
+        logger.error(f"❌ 리뷰 요약본 저장 실패: {type(e).__name__}: {e!r}")
     finally:
         try:
             conn.close()
             logger.debug("🛠️ DB 연결 종료")
         except Exception as e:
-            logger.warning(f"⚠️ DB 연결 종료 중 예외 발생: {e}")
+            logger.warning(f"⚠️ DB 연결 종료 중 예외 발생: {type(e).__name__}: {e!r}")
 
 def get_latest_review_summary(
     host: str,
@@ -103,11 +103,11 @@ def get_latest_review_summary(
                 logger.warning("⚠️ 해당 카테고리의 리뷰 요약본이 없습니다")
                 return None
     except Exception as e:
-        logger.error(f"❌ 리뷰 요약본 조회 실패: {e}")
+        logger.error(f"❌ 리뷰 요약본 조회 실패: {type(e).__name__}: {e!r}")
         return None
     finally:
         try:
             conn.close()
             logger.debug("🛠️ DB 연결 종료")
         except Exception as e:
-            logger.warning(f"⚠️ DB 연결 종료 중 예외 발생: {e}")
+            logger.warning(f"⚠️ DB 연결 종료 중 예외 발생: {type(e).__name__}: {e!r}")

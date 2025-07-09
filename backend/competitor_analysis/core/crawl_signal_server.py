@@ -36,13 +36,13 @@ def send_crawl_request_signal(host, user, password, db, category):
         conn.commit()
         logger.info(f"✅ 크롤러 요청 신호 전송 완료: {category}")
     except Exception as e:
-        logger.error(f"❌ 신호 전송 실패: {e}")
+        logger.error(f"❌ 신호 전송 실패: {type(e).__name__}: {e!r}")
     finally:
         try:
             conn.close()
             logger.debug("🛠️ DB 연결 종료")
         except Exception as e:
-            logger.warning(f"⚠️ DB 연결 종료 중 예외 발생: {e}")
+            logger.warning(f"⚠️ DB 연결 종료 중 예외 발생: {type(e).__name__}: {e!r}")
 
 def poll_and_process_signal(host, user, password, db, openai_api_key, interval=10):
     """
@@ -115,5 +115,5 @@ def poll_and_process_signal(host, user, password, db, openai_api_key, interval=1
                     logger.debug("🛠️ 처리 대기 신호 없음 (다음 확인까지 대기)")
             conn.close()
         except Exception as e:
-            logger.error(f"❌ 신호 감지/처리 중 오류: {e}")
+            logger.error(f"❌ 신호 감지/처리 중 오류: {type(e).__name__}: {e!r}")
         time.sleep(interval)

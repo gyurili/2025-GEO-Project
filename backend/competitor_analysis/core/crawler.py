@@ -88,14 +88,14 @@ def click_review_filter(driver, label: str) -> bool:
                     found = True
                     return True
             except Exception as e:
-                logger.warning(f"⚠️ 필터 항목 탐색 실패(계속 진행): {e}")
+                logger.warning(f"⚠️ 필터 항목 탐색 실패(계속 진행): {type(e).__name__}: {e!r}")
                 continue
 
         if not found:
             logger.warning(f"⚠️ 필터 '{label}' 클릭 실패 - 해당 요소 없음")
 
     except Exception as e:
-        logger.error(f"❌ 필터 클릭 예외 발생: {e}")
+        logger.error(f"❌ 필터 클릭 예외 발생: {type(e).__name__}: {e!r}")
 
     return False
 
@@ -170,7 +170,7 @@ def crawl_reviews_by_link(driver, url: str, max_reviews: int = 30) -> List[str]:
             logger.info(f"✅ 수집된 부정 리뷰 수: {len(reviews)}")
         return reviews
     except Exception as e:
-        logger.error(f"❌ 리뷰 수집 실패: {e}")
+        logger.error(f"❌ 리뷰 수집 실패: {type(e).__name__}: {e!r}")
         return []
 
 def crawl_reviews_by_category(
@@ -231,7 +231,7 @@ def crawl_reviews_by_category(
             logger.info(f"✅ 총 수집된 리뷰 수: {len(all_reviews)}")
         return all_reviews
     except Exception as e:
-        logger.error(f"❌ 카테고리 리뷰 수집 실패: {e}")
+        logger.error(f"❌ 카테고리 리뷰 수집 실패: {type(e).__name__}: {e!r}")
         return []
     finally:
         driver.quit()

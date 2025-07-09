@@ -41,7 +41,7 @@ def summarize_competitor_reviews(
         logger.info("✅ 경쟁사 리뷰 요약 완료")
         return summary
     except Exception as e:
-        logger.error(f"❌ 경쟁사 리뷰 요약 중 오류 발생: {e}")
+        logger.error(f"❌ 경쟁사 리뷰 요약 중 오류 발생: {type(e).__name__}: {e!r}")
         return ""
 
 def generate_differentiators(
@@ -96,5 +96,5 @@ def generate_differentiators(
             lines = [line.strip('-• ').strip() for line in content.split('\n') if line.strip()]
             return {"differences": lines}
     except Exception as e:
-        logger.error(f"❌ 차별점 생성 중 오류 발생: {e}")
+        logger.error(f"❌ 차별점 생성 중 오류 발생: {type(e).__name__}: {e!r}")
         return {"differences": []}
