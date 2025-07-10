@@ -160,7 +160,7 @@ class BackgroundHandler:
             alpha = transparent_image.getchannel("A")
 
             # 마스크 생성: 배경(투명, alpha=0)은 흰색(255), 제품(불투명, alpha>0)은 검정(0)
-            mask = alpha.point(lambda p: 255 if p == 0 else 0).convert("L")
+            mask = alpha.point(lambda p: 0 if p == 0 else 255).convert("L")
 
             # 저장
             os.makedirs(output_dir, exist_ok=True)
@@ -326,7 +326,7 @@ class Img2ImgGenerator:
             reference_image: Image.Image,
             negative_prompt: str = None,
             size=(1024, 1024),
-            num_inference_steps: int = 100, # 샘플링 단계 수
+            num_inference_steps: int = 50, # 샘플링 단계 수
             guidance_scale: float = 5.0, # 안내 척도 (CFG Scale)
         ) -> tuple[Image.Image, str]:
         """
