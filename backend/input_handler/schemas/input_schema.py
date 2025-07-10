@@ -11,7 +11,7 @@ class ProductInputSchema(BaseModel):
     price: int = Field(..., ge=0, le=10000000, description="가격 (0원 이상 1천만원 이하)")
     brand: str = Field(..., min_length=1, max_length=50, description="브랜드명")
     features: str = Field(..., min_length=1, max_length=500, description="상품 특징")
-    image_path: List[str] = Field(..., min_items=1, description="이미지 경로 목록 (최소 1개)")  # 수정됨
+    image_path: List[str] = Field(..., min_items=1, description="이미지 경로 목록 (최소 1개)")
     product_link: Optional[str] = Field(None, description="상품 링크")
     
     @validator('name')
