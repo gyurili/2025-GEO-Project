@@ -1,6 +1,7 @@
 import yaml
 import os
 import sys
+from PIL import Image
 
 from utils.logger import get_logger
 from .core.image_loader import ImageLoader
@@ -51,16 +52,6 @@ def image_generator_main(
 
     logger.info("✅ 배경 제거 및 저장 성공.")
 
-    # 2.1. 마스크 이미지 생성
-    logger.debug(f"🛠️ 마스크 이미지 생성 시작")
-    mask_image = background_handler.create_mask_from_alpha(processed_image, filename)
-
-    if mask_image is None:
-        logger.error("❌ 마스크 이미지 생성에 실패했습니다. 처리를 중단합니다.")
-        return False
-
-    logger.info("✅ 마스크 이미지 생성 및 저장 성공.")
-
     # 3. 프롬프트 생성
     logger.debug("🛠️ 프롬프트 생성 시작")
     prompts = generate_prompts(product)
@@ -71,13 +62,12 @@ def image_generator_main(
         logger.error("❌ 프롬프트 생성 실패")
 
     # 제품에 배경 이미지 생성하기
-    logger.debug("🛠️ 파이프라인 시작")
+    logger.debug("🛠️ 모델 파이프라인으로 이미지 생성 시작")
     try:
         img_2_img_gen = Img2ImgGenerator(model_pipeline)
         gen_image, image_path = img_2_img_gen.generate_img(
             prompt=prompts["background_prompt"],
             init_image=processed_image,
-            mask_image=mask_image,
             negative_prompt=prompts["negative_prompt"]
         )
         logger.info("✅ 이미지 생성 성공")
