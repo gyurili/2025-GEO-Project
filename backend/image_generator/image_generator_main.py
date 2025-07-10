@@ -68,25 +68,21 @@ def image_generator_main(
 
     # 4. 모델 파이프라인 생성
     logger.debug(f"🛠️ 모델 다운로드 및 로드 시작")
-    pipeline = get_model_pipeline(model_id, model_type)
+    pipeline = get_model_pipeline(
+        model_id=model_id, 
+        model_type=model_type,
+        use_ip_adapter=True,
+        ip_adapter_config={
+            "repo_id": "h94/IP-Adapter",
+            "subfolder": "sdxl_models",
+            "weight_name": "ip-adapter_sdxl.bin",
+            "scale": ip_adapter_scale
+        }
+    )
     if pipeline:
         logger.info(f"✅ 모델 다운로드 및 로드 완료")
     else:
         logger.error("❌ 모델 다운로드 또는 로드 실패.")
-
-    # 4.1. IP-Adapter 가중치를 로드된 파이프라인에 주입
-    logger.debug("🛠️ 파이프라인에 IP-Adapter가중치 주입")
-    try:
-        pipeline.load_ip_adapter(
-            "h94/IP-Adapter", # 로컬 IP-Adapter 리포지토리 경로 지정
-            subfolder="sdxl_models", # 리포지토리 내의 서브폴더
-            weight_name="ip-adapter_sdxl.bin" # 가중치 파일 이름
-        )
-        pipeline.set_ip_adapter_scale(ip_adapter_scale)
-        logger.info("✅ IP-Adapter가 파이프라인에 성공적으로 로드되었습니다.")
-    except Exception as e:
-        logger.error(f"❌ IP-Adapter 로드 중 오류 발생: {e}")
-        return False
 
     # 5. 제품에 배경 이미지 생성하기
     logger.debug("🛠️ 모델 파이프라인으로 이미지 생성 시작")

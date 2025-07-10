@@ -379,5 +379,5 @@ class Img2ImgGenerator:
             logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
             return image, save_path
         except Exception as e:
-            logger.error(f"❌ 텍스트-이미지 생성 중 오류 발생: {e}")
+            logger.error(f"❌ 이미지-이미지 생성 중 오류 발생: {e}")
             return None
