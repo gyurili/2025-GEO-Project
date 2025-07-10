@@ -12,11 +12,11 @@ input:
   price: 39800
   brand: "베이직웨어"
   features: "부드러운 촉감, 라운드 넥 디자인, 데일리 캐주얼 스타일, 보온성 우수"
-  image_path: "data/input/product.jpg"
+  image_path: "backend/data/input/test2.jpg"
   css_type: 1
 
 db_config:
-  "host": "34.55.195.44"
+  "host": "34.55.195.44" # 외부 아이피
   "user": "GEOGEO"
   "password": ""
   "db": "geo_db"
