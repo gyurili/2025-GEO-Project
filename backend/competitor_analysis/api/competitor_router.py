@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from backend.competitor_analysis.schemas.input_schema import ProductInput
 from backend.competitor_analysis.schemas.output_schema import CompetitorOutput
 from backend.competitor_analysis.core.competitor_main import competitor_main
-from utils.config import get_openai_api_key
+from utils.config import get_openai_api_key, get_db_config
 from utils.logger import get_logger
 
 router = APIRouter()
@@ -45,8 +45,9 @@ async def analyze_competitor(
     logger.debug("🛠️ /analyze 엔드포인트 호출")
     try:
         openai_api_key = get_openai_api_key()
+        db_config = get_db_config()
         product_input_dict = product_input.model_dump()
-        result = competitor_main(product_input_dict, openai_api_key)
+        result = competitor_main(product_input_dict, openai_api_key, db_config)
         return CompetitorOutput(differences=result.get("differences", []))
     except Exception as e:
         logger.error(f"❌ 경쟁사 분석 실패: {type(e).__name__}: {e!r}")

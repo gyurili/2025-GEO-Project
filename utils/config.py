@@ -77,19 +77,3 @@ def get_openai_api_key() -> str:
     else:
         logger.warning("⚠️ .env에 OPENAI_API_KEY가 존재하지 않습니다")
     return key
-
-
-def get_product_input() -> dict:
-    """
-    config.yaml에서 input(예시 상품 입력값) 설정을 반환합니다.
-
-    Returns:
-        dict: input 키의 값 (없으면 빈 딕셔너리)
-    """
-    logger.debug("🛠️ product_input config 불러오기 시도")
-    product_input = load_config().get("input", {})
-    if product_input:
-        logger.info("✅ input config 로드 성공")
-    else:
-        logger.warning("⚠️ config.yaml에 input 항목이 존재하지 않습니다")
-    return product_input
