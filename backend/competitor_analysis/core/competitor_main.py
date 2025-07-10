@@ -77,5 +77,6 @@ def competitor_main(
 
     logger.info("✅ 차별점 리스트 생성 완료")
     return {
+        "review_summary": summary,
         "differences": differences
     }

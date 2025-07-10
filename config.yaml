@@ -14,3 +14,9 @@ input:
   features: "부드러운 촉감, 라운드 넥 디자인, 데일리 캐주얼 스타일, 보온성 우수"
   image_path: "data/input/product.jpg"
   css_type: 1
+
+db_config:
+  "host": "34.55.195.44"
+  "user": "GEOGEO"
+  "password": ""
+  "db": "geo_db"
