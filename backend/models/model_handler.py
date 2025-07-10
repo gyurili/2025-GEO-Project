@@ -1,7 +1,7 @@
 import os
 import torch
 from dotenv import load_dotenv
-from diffusers import DiffusionPipeline, AutoPipelineForText2Image, StableDiffusionXLInpaintPipeline, StableDiffusionInpaintPipeline
+from diffusers import DiffusionPipeline, AutoPipelineForText2Image
 from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
 from huggingface_hub import snapshot_download
 from utils.logger import get_logger
@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 load_dotenv()
 
 MODEL_LOADERS = {
-    "diffusion": StableDiffusionInpaintPipeline,
+    "diffusion": AutoPipelineForText2Image,
     "casual_lm": AutoModelForCausalLM,
     "encoder": AutoModel,
 }
@@ -56,10 +56,10 @@ def download_model(
     load_kwargs = {}
     if torch.cuda.is_available():
         load_kwargs["torch_dtype"] = torch.float16
-        logger.info("✅ GPU를 사용하여 모델을 로드")
+        logger.info("✅ GPU를 사용하여 모델을 다운로드")
     else: 
         load_kwargs["torch_dtype"] = torch.float32
-        logger.info("✅ CPU를 사용하여 모델을 로드")
+        logger.info("✅ CPU를 사용하여 모델을 다운로드")
 
     if model_type == "diffusion":
         pass

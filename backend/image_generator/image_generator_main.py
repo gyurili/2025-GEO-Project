@@ -54,7 +54,7 @@ def image_generator_main(
 
     # 3. 프롬프트 생성
     logger.debug("🛠️ 프롬프트 생성 시작")
-    prompts = generate_prompts(product)
+    prompts = generate_prompts(product, mode="human")
 
     if prompts:
         logger.info("✅ 프롬프트 생성 완료")
@@ -67,7 +67,7 @@ def image_generator_main(
         img_2_img_gen = Img2ImgGenerator(model_pipeline)
         gen_image, image_path = img_2_img_gen.generate_img(
             prompt=prompts["background_prompt"],
-            init_image=processed_image,
+            reference_image=processed_image,
             negative_prompt=prompts["negative_prompt"]
         )
         logger.info("✅ 이미지 생성 성공")

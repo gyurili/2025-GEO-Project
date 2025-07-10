@@ -326,8 +326,8 @@ class Img2ImgGenerator:
             reference_image: Image.Image,
             negative_prompt: str = None,
             size=(1024, 1024),
-            num_inference_steps: int = 4, # 샘플링 단계 수
-            guidance_scale: float = 0.5, # 안내 척도 (CFG Scale)
+            num_inference_steps: int = 100, # 샘플링 단계 수
+            guidance_scale: float = 5.0, # 안내 척도 (CFG Scale)
         ) -> tuple[Image.Image, str]:
         """
         주어진 이미지와 마스크 이미지, 프롬프트를 이용하여 이미지를 생성합니다.
@@ -360,7 +360,7 @@ class Img2ImgGenerator:
             logger.debug(f"🛠️ IPAdapter 이미지 생성 시작: {prompt}")
             image = self.pipeline(
                 prompt=prompt,
-                image=reference_image_image,
+                ip_adapter_image=reference_image,
                 negative_prompt=negative_prompt,
                 height=size[1], 
                 width=size[0],
