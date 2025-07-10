@@ -8,5 +8,4 @@ class ProductInput(BaseModel):
     brand: str
     features: str
     image_path: str
-    product_link: Optional[str] = None
     css_type: int
