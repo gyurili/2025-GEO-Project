@@ -1,8 +1,9 @@
 import os
 import torch
 from dotenv import load_dotenv
-from diffusers import DiffusionPipeline
+from diffusers import DiffusionPipeline, AutoPipelineForText2Image
 from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
+from huggingface_hub import snapshot_download
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -10,9 +11,9 @@ logger = get_logger(__name__)
 load_dotenv()
 
 MODEL_LOADERS = {
-    "diffusion": DiffusionPipeline,
+    "diffusion": AutoPipelineForText2Image,
     "casual_lm": AutoModelForCausalLM,
-    "encoder": AutoModel
+    "encoder": AutoModel,
 }
 
 def download_model(
@@ -50,19 +51,18 @@ def download_model(
     token = os.getenv("HF_TOKEN")
     if token is None:
         logger.warning("⚠️ Hugging Face API 토큰(HF_TOKEN)이 .env에 정의되어 있지 않습니다.")
-        return None
 
     # GPU체크
     load_kwargs = {}
     if torch.cuda.is_available():
         load_kwargs["torch_dtype"] = torch.float16
-        logger.info("✅ GPU를 사용하여 모델을 로드")
+        logger.info("✅ GPU를 사용하여 모델을 다운로드")
     else: 
         load_kwargs["torch_dtype"] = torch.float32
-        logger.info("✅ CPU를 사용하여 모델을 로드")
+        logger.info("✅ CPU를 사용하여 모델을 다운로드")
 
     if model_type == "diffusion":
-        load_kwargs["device_map"] = "balanced"
+        pass
     else:
         load_kwargs["device_map"] = "auto"
 
@@ -81,7 +81,7 @@ def download_model(
 
 def load_model(
         model_path: str,
-        model_type: "diffusion"
+        model_type: str = "diffusion"
     ):
     """
     저장된 모델 디렉토리에서 모델을 불러옵니다.
@@ -121,3 +121,15 @@ def load_model(
     except Exception as e:
         logger.error(f"❌ 모델 로딩 중 오류 발생: {e}")
         return None
+
+
+def get_model_pipeline(
+        model_id: str,
+        model_type: str = "diffusion",
+    ):
+    model_path = download_model(model_id, model_type)
+    if model_path is None:
+        logger.error("❌ 모델 경로가 None입니다. 로딩을 중단합니다.")
+        return None
+    model_pipeline = load_model(model_path, model_type)
+    return model_pipeline

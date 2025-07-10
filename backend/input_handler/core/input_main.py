@@ -1,28 +1,34 @@
 import os
 import yaml
-import logging
 from typing import Dict, Any, Optional, List
 from pathlib import Path
+from utils.logger import get_logger
 
 from .form_parser import FormParser
 from .image_preprocess import ImagePreprocessor
 
-logger = logging.getLogger(__name__)
-
+# 로거 설정
+logger = get_logger(__name__)
 
 class InputHandler:
     """입력 처리 메인 클래스"""
     
     def __init__(self, project_root: str = None):
+        logger.debug("🛠️ InputHandler 인스턴스 초기화 시작")
+        
         # 루트 디렉토리 설정
         if project_root:
             self.project_root = project_root
+            logger.debug(f"🛠️ 제공된 프로젝트 루트 사용: {project_root}")
         else:
             # 현재 파일 위치에서 프로젝트 루트 찾기
             current_file = os.path.abspath(__file__)
             # backend/input_handler/core/input_main.py에서 루트까지 3단계 위
             self.project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_file))))
+            logger.debug(f"🛠️ 자동 감지된 프로젝트 루트: {self.project_root}")
 
+        # 파서 및 프로세서 초기화
+        logger.debug("🛠️ FormParser 및 ImagePreprocessor 초기화 시작")
         self.form_parser = FormParser()
         self.image_processor = ImagePreprocessor()
         
@@ -32,21 +38,45 @@ class InputHandler:
         self.output_dir = os.path.join(self.data_dir, "output")
         self.result_dir = os.path.join(self.data_dir, "result")
         
+        logger.debug(f"🛠️ 디렉토리 경로 설정 완료:")
+        logger.debug(f"🛠️   - data: {self.data_dir}")
+        logger.debug(f"🛠️   - input: {self.input_dir}")
+        logger.debug(f"🛠️   - output: {self.output_dir}")
+        logger.debug(f"🛠️   - result: {self.result_dir}")
+        
         # 디렉토리 생성
         self._create_directories()
-
         
+        logger.info("✅ InputHandler 인스턴스 초기화 완료")
     
     def _create_directories(self):
         """필요한 디렉토리 생성"""
+        logger.debug("🛠️ 필요한 디렉토리 생성 시작")
+        
         directories = [self.data_dir, self.input_dir, self.output_dir, self.result_dir]
+        created_count = 0
+        existing_count = 0
+        
         for directory in directories:
-            os.makedirs(directory, exist_ok=True)
+            if not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+                created_count += 1
+                logger.debug(f"🛠️ 디렉토리 생성: {directory}")
+            else:
+                existing_count += 1
+                logger.debug(f"🛠️ 기존 디렉토리 확인: {directory}")
+        
+        logger.info(f"✅ 디렉토리 설정 완료: 생성 {created_count}개, 기존 {existing_count}개")
     
     def create_config_yaml(self, product_data: Dict[str, Any], 
                           verbose: bool = False) -> str:
         """config.yaml 파일 생성"""
+        logger.debug("🛠️ config.yaml 파일 생성 시작")
+        logger.debug(f"🛠️ verbose 모드: {verbose}")
+        logger.debug(f"🛠️ 상품 데이터 키: {list(product_data.keys())}")
+        
         try:
+            # 설정 구조 생성
             config = {
                 'settings': {
                     'verbose': verbose,
@@ -59,147 +89,244 @@ class InputHandler:
                 'input': product_data
             }
             
+            logger.debug(f"🛠️ 설정 구조 생성 완료: {len(config)} 섹션")
+            
             # config.yaml 파일 경로
             config_path = os.path.join(self.project_root, "config.yaml")
+            logger.debug(f"🛠️ 설정 파일 경로: {config_path}")
             
             # YAML 파일 생성
+            logger.debug("🛠️ YAML 파일 쓰기 시작")
             with open(config_path, 'w', encoding='utf-8') as f:
                 yaml.dump(config, f, default_flow_style=False, 
                          allow_unicode=True, sort_keys=False)
             
-            logger.info(f"config.yaml 생성 완료: {config_path}")
+            # 생성된 파일 크기 확인
+            file_size = os.path.getsize(config_path)
+            logger.debug(f"🛠️ 생성된 파일 크기: {file_size} bytes")
+            
+            logger.info(f"✅ config.yaml 생성 완료: {os.path.basename(config_path)}")
             return config_path
             
         except Exception as e:
-            logger.error(f"config.yaml 생성 실패: {str(e)}")
+            logger.error(f"❌ config.yaml 생성 실패: {e}")
             raise Exception(f"설정 파일 생성 중 오류 발생: {str(e)}")
     
     def process_image_upload(self, uploaded_file) -> Optional[str]:
-        """업로드된 이미지 처리"""
+        """업로드된 이미지 처리 (단일 파일)"""
+        logger.debug(f"🛠️ 단일 이미지 업로드 처리 시작: {uploaded_file.name if uploaded_file else 'None'}")
+        
         try:
             if uploaded_file is None:
+                logger.warning("⚠️ 업로드된 파일이 없음")
                 return None
             
             # 이미지 처리
+            logger.debug("🛠️ ImagePreprocessor를 통한 이미지 처리 시작")
             image_path = self.image_processor.process_image(uploaded_file, self.input_dir)
             
             if image_path:
                 # 상대 경로로 변환
                 relative_path = os.path.relpath(image_path, self.project_root)
-                logger.info(f"이미지 업로드 완료: {relative_path}")
+                logger.info(f"✅ 단일 이미지 업로드 완료: {relative_path}")
                 return relative_path
             else:
-                logger.error("이미지 처리 실패")
+                logger.warning("⚠️ 이미지 처리 실패 - 유효하지 않은 이미지")
                 return None
                 
         except Exception as e:
-            logger.error(f"이미지 업로드 처리 중 오류: {str(e)}")
+            logger.error(f"❌ 이미지 업로드 처리 중 오류: {e}")
             return None
     
     def process_form_input(self, form_data: Dict[str, Any], 
-                      uploaded_files=None) -> Dict[str, Any]:  # uploaded_file → uploaded_files
+                      uploaded_files=None) -> Dict[str, Any]:
         """전체 입력 처리 파이프라인"""
+        logger.debug("🛠️ 전체 입력 처리 파이프라인 시작")
+        logger.debug(f"🛠️ 폼 데이터 키: {list(form_data.keys())}")
+        logger.debug(f"🛠️ 업로드된 파일 수: {len(uploaded_files) if uploaded_files else 0}")
+        
         try:
             # 1. 폼 데이터 파싱 및 검증 (이미지 제외)
+            logger.debug("🛠️ 1단계: 폼 데이터 파싱 및 검증 시작")
             temp_data = form_data.copy()
             temp_data['image_path'] = ['temp']  # 임시 값 (검증 통과용)
+            
             parsed_data = self.form_parser.parse_form_data(temp_data)
+            logger.debug("🛠️ 폼 데이터 파싱 완료")
             
             # 2. 이미지 처리 (필수)
+            logger.debug("🛠️ 2단계: 이미지 처리 시작")
             if not uploaded_files:
+                logger.error("❌ 이미지 필수 항목 누락")
                 raise ValueError("이미지는 필수 항목입니다. 최소 1개의 이미지를 업로드해주세요.")
             
             image_paths = self.process_multiple_images(uploaded_files)
             if not image_paths:
+                logger.error("❌ 모든 이미지 처리 실패")
                 raise ValueError("이미지 처리에 실패했습니다. 올바른 이미지 파일을 업로드해주세요.")
             
             parsed_data['image_path'] = image_paths
+            logger.debug(f"🛠️ 이미지 경로 설정 완료: {len(image_paths)}개")
             
             # 3. config.yaml 생성
+            logger.debug("🛠️ 3단계: config.yaml 생성 시작")
             config_path = self.create_config_yaml(parsed_data)
+            logger.debug(f"🛠️ config.yaml 생성 완료: {config_path}")
             
-            logger.info("입력 처리 파이프라인 완료")
+            logger.info("✅ 전체 입력 처리 파이프라인 완료")
             return parsed_data
             
         except Exception as e:
-            logger.error(f"입력 처리 파이프라인 실패: {str(e)}")
+            logger.error(f"❌ 입력 처리 파이프라인 실패: {e}")
             raise Exception(f"입력 처리 중 오류 발생: {str(e)}")
 
     def process_multiple_images(self, uploaded_files) -> List[str]:
         """여러 업로드된 이미지 처리"""
+        logger.debug(f"🛠️ 다중 이미지 처리 시작: {len(uploaded_files)}개 파일")
+        
         try:
             if not uploaded_files:
+                logger.warning("⚠️ 처리할 이미지 파일이 없음")
                 return []
             
+            # 파일명 로그
+            file_names = [f.name for f in uploaded_files]
+            logger.debug(f"🛠️ 업로드된 파일들: {file_names}")
+            
             # 이미지 처리
+            logger.debug("🛠️ ImagePreprocessor를 통한 다중 이미지 처리 시작")
             image_paths = self.image_processor.process_multiple_images(uploaded_files, self.input_dir)
             
             if image_paths:
-                logger.info(f"이미지 {len(image_paths)}개 업로드 완료")
+                success_count = len(image_paths)
+                total_count = len(uploaded_files)
+                
+                if success_count == total_count:
+                    logger.info(f"✅ 모든 이미지 처리 완료: {success_count}개")
+                else:
+                    logger.warning(f"⚠️ 일부 이미지만 처리 완료: {success_count}/{total_count}개")
+                
+                logger.debug(f"🛠️ 처리된 이미지 경로들: {image_paths}")
                 return image_paths
             else:
-                logger.error("이미지 처리 실패")
+                logger.warning("⚠️ 모든 이미지 처리 실패")
                 return []
                 
         except Exception as e:
-            logger.error(f"다중 이미지 업로드 처리 중 오류: {str(e)}")
+            logger.error(f"❌ 다중 이미지 처리 중 오류: {e}")
             return []
     
     def load_config(self, config_path: str = None) -> Dict[str, Any]:
         """config.yaml 파일 로드"""
+        if config_path is None:
+            config_path = os.path.join(self.project_root, "config.yaml")
+        
+        logger.debug(f"🛠️ config.yaml 파일 로드 시작: {config_path}")
+        
         try:
-            if config_path is None:
-                config_path = os.path.join(self.project_root, "config.yaml")
-            
+            # 파일 존재 확인
             if not os.path.exists(config_path):
+                logger.error(f"❌ 설정 파일을 찾을 수 없습니다: {config_path}")
                 raise FileNotFoundError(f"설정 파일을 찾을 수 없습니다: {config_path}")
             
+            # 파일 크기 확인
+            file_size = os.path.getsize(config_path)
+            logger.debug(f"🛠️ 설정 파일 크기: {file_size} bytes")
+            
+            # YAML 파일 읽기
+            logger.debug("🛠️ YAML 파일 파싱 시작")
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = yaml.safe_load(f)
             
-            logger.info(f"config.yaml 로드 완료: {config_path}")
+            # 로드된 설정 정보
+            if config:
+                sections = list(config.keys())
+                logger.debug(f"🛠️ 로드된 설정 섹션: {sections}")
+                logger.info(f"✅ config.yaml 로드 완료: {os.path.basename(config_path)}")
+            else:
+                logger.warning("⚠️ 빈 설정 파일 로드")
+            
             return config
             
+        except yaml.YAMLError as e:
+            logger.error(f"❌ YAML 파싱 실패: {e}")
+            raise Exception(f"설정 파일 파싱 중 오류 발생: {str(e)}")
         except Exception as e:
-            logger.error(f"config.yaml 로드 실패: {str(e)}")
+            logger.error(f"❌ config.yaml 로드 실패: {e}")
             raise Exception(f"설정 파일 로드 중 오류 발생: {str(e)}")
     
     def get_product_input_dict(self, config_path: str = None) -> Dict[str, Any]:
         """config.yaml에서 product_input 딕셔너리 추출"""
+        logger.debug("🛠️ product_input 딕셔너리 추출 시작")
+        
         try:
+            # 설정 파일 로드
             config = self.load_config(config_path)
             
+            # input 섹션 확인
             if 'input' not in config:
+                logger.error("❌ 설정 파일에 'input' 섹션이 없습니다")
                 raise ValueError("설정 파일에 'input' 섹션이 없습니다.")
             
             product_input = config['input']
             
-            logger.info("product_input 딕셔너리 추출 완료")
+            # 추출된 데이터 정보
+            if isinstance(product_input, dict):
+                keys = list(product_input.keys())
+                logger.debug(f"🛠️ 추출된 상품 데이터 키: {keys}")
+                
+                # 필수 필드 확인
+                required_fields = ['name', 'category', 'price', 'brand', 'features']
+                missing_fields = [field for field in required_fields if field not in product_input]
+                
+                if missing_fields:
+                    logger.warning(f"⚠️ 누락된 필수 필드: {missing_fields}")
+                else:
+                    logger.debug("🛠️ 모든 필수 필드 확인됨")
+                
+                logger.info("✅ product_input 딕셔너리 추출 완료")
+            else:
+                logger.warning("⚠️ product_input이 딕셔너리 형태가 아님")
+            
             return product_input
             
         except Exception as e:
-            logger.error(f"product_input 딕셔너리 추출 실패: {str(e)}")
+            logger.error(f"❌ product_input 딕셔너리 추출 실패: {e}")
             raise Exception(f"상품 입력 데이터 추출 중 오류 발생: {str(e)}")
     
     def validate_existing_config(self, config_path: str = None) -> bool:
         """기존 config.yaml 유효성 검증"""
+        logger.debug("🛠️ 기존 config.yaml 유효성 검증 시작")
+        
         try:
+            # 설정 파일 로드
             config = self.load_config(config_path)
             
             # 필수 섹션 확인
             required_sections = ['settings', 'data', 'input']
+            logger.debug(f"🛠️ 필수 섹션 확인: {required_sections}")
+            
+            missing_sections = []
             for section in required_sections:
                 if section not in config:
-                    logger.error(f"필수 섹션 누락: {section}")
-                    return False
+                    missing_sections.append(section)
+                    logger.warning(f"⚠️ 필수 섹션 누락: {section}")
+                else:
+                    logger.debug(f"🛠️ 섹션 확인됨: {section}")
+            
+            if missing_sections:
+                logger.error(f"❌ 필수 섹션 누락: {missing_sections}")
+                return False
             
             # 입력 데이터 검증
+            logger.debug("🛠️ 입력 데이터 스키마 검증 시작")
             input_data = config['input']
             validated_data = self.form_parser.schema(**input_data)
+            logger.debug("🛠️ 스키마 검증 통과")
             
-            logger.info("기존 config.yaml 유효성 검증 완료")
+            logger.info("✅ config.yaml 유효성 검증 완료 - 유효함")
             return True
             
         except Exception as e:
-            logger.error(f"config.yaml 유효성 검증 실패: {str(e)}")
+            logger.error(f"❌ config.yaml 유효성 검증 실패: {e}")
             return False

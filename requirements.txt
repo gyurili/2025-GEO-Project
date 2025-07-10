@@ -11,5 +11,17 @@ imgkit
 # 이학진
 
 # 정영선
-
+pillow
+requests
+rembg
+onnxruntime
+torch
+transformers
+diffusers
+accelerate
+dotenv
+sentencepiece
+openai
+ip-adapter
+einops
 

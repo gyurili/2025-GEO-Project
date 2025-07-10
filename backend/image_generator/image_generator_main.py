@@ -1,10 +1,13 @@
+import yaml
 import os
 import sys
+from PIL import Image
 
 from utils.logger import get_logger
 from .core.image_loader import ImageLoader
-from .core.background_handler import BackgroundHandler
-from .core.prompt_builder import generate_background_prompt, generate_negative_prompt
+from .core.background_handler import Txt2ImgGenerator, BackgroundHandler, Img2ImgGenerator
+from .core.prompt_builder import generate_prompts
+from backend.models.model_handler import get_model_pipeline
 
 '''
 TODO: 상품명, 카테고리, 특징, 이미지패스, 상품링크, 차별점을 바탕으로 이미지 재구성
@@ -13,25 +16,25 @@ TODO: 이미지를 임시로 데이터 아웃풋에 저장 이후 삭제
 
 logger = get_logger(__name__)
 
-# def image_generator_main(config, product_info, differences):
-    
-#     image_data = {"image_path": "data/output/example.jpg"}
-#     return image_data
-
 def image_generator_main(
     product: dict,
-    input_image_path: str, 
-    output_dir: str = "backend/data/output/",
+    image_path: str, 
+    prompt_mode: str = "human",
+    model_id: str = "stabilityai/sdxl-turbo",
+    model_type: str = "diffusion",
+    ip_adapter_scale: float = 0.8,
+    num_inference_steps: int = 99,
+    guidance_scale: float = 7.5,
+    output_dir_path: str = "backend/data/output/",
     background_image_path: str = None,
 )-> dict | bool:
     """
     이미지 제너레이터 메인
     """
-    logger.debug(f"🛠️ 이미지 처리 시작")
-
     # 1. 이미지 로더
+    logger.debug(f"🛠️ 이미지 로드 시작")
     image_loader = ImageLoader()
-    loaded_image, filename = image_loader.load_image(image_path=input_image_path, target_size=None)
+    loaded_image, filename = image_loader.load_image(image_path=image_path, target_size=None)
 
     if loaded_image is None:
         logger.error("❌ 이미지 로드에 실패했습니다. 처리를 중단합니다.")
@@ -39,14 +42,13 @@ def image_generator_main(
 
     logger.info("✅ 이미지 로드 성공.")
 
-    # 2 배경 제거
+    # 2. 배경 제거
     logger.debug(f"🛠️ 배경 제거 시작")
     background_handler = BackgroundHandler()
 
     processed_image = background_handler.remove_background(
         input_image=loaded_image,
         original_filename=filename,
-        output_dir=output_dir
     )
 
     if processed_image is None:
@@ -55,49 +57,51 @@ def image_generator_main(
 
     logger.info("✅ 배경 제거 및 저장 성공.")
 
-    # 3. 단색 배경 추가
-    logger.debug(f"🛠️ 단색 배경 추가 시작")
-    image_with_color = background_handler.add_color_background(
-        foreground_image=processed_image,
-        color=(255, 255, 255),
-        original_filename=filename,
-        output_dir=output_dir
-    )
+    # 3. 프롬프트 생성
+    logger.debug("🛠️ 프롬프트 생성 시작")
+    prompts = generate_prompts(product, mode=prompt_mode)
 
-    if image_with_color is None:
-        logger.error("❌ 단색 배경 추가에 실패했습니다. 처리를 중단합니다.")
-        return False
+    if prompts:
+        logger.info("✅ 프롬프트 생성 완료")
+    else:
+        logger.error("❌ 프롬프트 생성 실패")
 
-    logger.info("✅ 단색 배경 추가 및 저장 성공.")
+    # 4. 모델 파이프라인 생성
+    logger.debug(f"🛠️ 모델 다운로드 및 로드 시작")
+    pipeline = get_model_pipeline(model_id, model_type)
+    if pipeline:
+        logger.info(f"✅ 모델 다운로드 및 로드 완료")
+    else:
+        logger.error("❌ 모델 다운로드 또는 로드 실패.")
 
-    # 4. 이미지 배경 추가
-    if background_image_path:
-        logger.debug(f"🛠️ 이미지 배경 추가 시작")
-        bg_image, bg_filename = image_loader.load_image(
-            image_path=background_image_path,
+    # 4.1. IP-Adapter 가중치를 로드된 파이프라인에 주입
+    logger.debug("🛠️ 파이프라인에 IP-Adapter가중치 주입")
+    try:
+        pipeline.load_ip_adapter(
+            "h94/IP-Adapter", # 로컬 IP-Adapter 리포지토리 경로 지정
+            subfolder="sdxl_models", # 리포지토리 내의 서브폴더
+            weight_name="ip-adapter_sdxl.bin" # 가중치 파일 이름
         )
-
-        if bg_image is None:
-            logger.error("❌ 배경 이미지 로드에 실패했습니다. 배경 합성을 건너뜁니다.")
-        else:
-            image_with_bg = background_handler.add_image_background(
-                foreground_image=processed_image,
-                background_image=bg_image,
-                original_filename=filename,
-                background_filename=bg_filename,
-                output_dir=output_dir
-            )
-            if image_with_bg is None:
-                logger.error("❌ 이미지 배경 추가에 실패했습니다. 처리를 중단합니다.")
-            logger.info("✅ 이미지 배경 추가 및 저장 성공.")
-
-    # 5. 프롬프트 생성
-    logger.debug(f"🛠️ 배경 프롬프트 생성 시작")
-    prompt = generate_background_prompt(product)
-    neg_prompt = generate_negative_prompt(product)
-    if not prompt:
-        logger.error("❌ 프롬프트 생성에 실패했습니다. 처리를 중단합니다.")
+        pipeline.set_ip_adapter_scale(ip_adapter_scale)
+        logger.info("✅ IP-Adapter가 파이프라인에 성공적으로 로드되었습니다.")
+    except Exception as e:
+        logger.error(f"❌ IP-Adapter 로드 중 오류 발생: {e}")
         return False
-    
-    return {"prompt": prompt, "negative_prompt": neg_prompt}
 
+    # 5. 제품에 배경 이미지 생성하기
+    logger.debug("🛠️ 모델 파이프라인으로 이미지 생성 시작")
+    try:
+        img_2_img_gen = Img2ImgGenerator(pipeline)
+        gen_image, image_path = img_2_img_gen.generate_img(
+            prompt=prompts["background_prompt"],
+            reference_image=processed_image,
+            filename=filename,
+            negative_prompt=prompts["negative_prompt"],
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale
+        )
+        logger.info("✅ 이미지 생성 성공")
+    except Exception as e:
+        logger.error(f"❌ 이미지 생성 중 에러 발생: {e}")
+
+    return {"image": gen_image}
