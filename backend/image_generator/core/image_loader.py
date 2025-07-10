@@ -61,6 +61,7 @@ class ImageLoader:
                 image = image.resize(target_size, Image.LANCZOS)
                 logger.debug(f"✅ 이미지 리사이즈 완료. 크기: {image.size}")
             return image, base_filename
+            
         except ValueError as ve:
             logger.error(f"❌ 잘못된 인자값 오류: {ve}")
             return None, None
