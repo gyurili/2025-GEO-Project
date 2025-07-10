@@ -45,7 +45,7 @@ async def analyze_competitor(
     logger.debug("🛠️ /analyze 엔드포인트 호출")
     try:
         openai_api_key = get_openai_api_key()
-        product_input_dict = product_input.dict()
+        product_input_dict = product_input.model_dump()
         result = competitor_main(product_input_dict, openai_api_key)
         return CompetitorOutput(differences=result.get("differences", []))
     except Exception as e:
