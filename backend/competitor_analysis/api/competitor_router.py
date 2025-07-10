@@ -38,7 +38,6 @@ async def analyze_competitor(
                 "brand": "우일",
                 "features": "인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감",
                 "image_path": "data/input/product.jpg",
-                "product_link": "https://www.coupang.com/vp/products/example_id",
                 "css_type": 1
             }
         >>> Response: { "differences": ["땀 흡수력 강화", "부드러운 촉감", ...] }
