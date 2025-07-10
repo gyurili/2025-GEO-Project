@@ -269,6 +269,7 @@ class Txt2ImgGenerator:
     def generate_background(
             self, 
             prompt: str,
+            filename: str,
             negative_prompt: str = None,
             size=(512, 512),
             num_inference_steps: int = 50, # 샘플링 단계 수
@@ -305,7 +306,9 @@ class Txt2ImgGenerator:
                 num_images_per_prompt=1
             ).images[0]
             logger.info(f"✅ 배경 이미지 생성 완료")
-            save_path = "backend/data/output/txt2img.png"
+
+            name_without_ext, _ = os.path.splitext(filename)
+            save_path = f"backend/data/output/{name_without_ext}.png"
             image.save(save_path)
             logger.info(f"✅ 배경 이미지가 {save_path}에 생성되었습니다.")
             return image, save_path
@@ -324,6 +327,7 @@ class Img2ImgGenerator:
             self, 
             prompt: str,
             reference_image: Image.Image,
+            filename: str,
             negative_prompt: str = None,
             size=(512, 512),
             num_inference_steps: int = 99, # 샘플링 단계 수
@@ -335,6 +339,7 @@ class Img2ImgGenerator:
         Args:
             prompt (str): 이미지를 생성할 긍정 프롬프트.
             reference_image (PIL.Image.Image): 기반이 되는 이미지
+            filename (str): 원본 파일 이름
             mask_image (PIL.Image.Image): 재생성할 곳을 표시하는 마스크 이미지
             negative_prompt (str, optional): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
                                             기본값은 None.
@@ -368,7 +373,8 @@ class Img2ImgGenerator:
             ).images[0]
             logger.info(f"✅ 이미지 생성 완료")
             
-            save_path = "backend/data/output/img2img.png"
+            name_without_ext, _ = os.path.splitext(filename)
+            save_path = f"backend/data/output/{name_without_ext}.png"
             image.save(save_path)
             logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
             return image, save_path
