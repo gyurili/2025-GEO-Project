@@ -126,10 +126,33 @@ def load_model(
 def get_model_pipeline(
         model_id: str,
         model_type: str = "diffusion",
+        use_ip_adapter: bool = True,
+        ip_adapter_config: dict = None,
     ):
     model_path = download_model(model_id, model_type)
     if model_path is None:
         logger.error("❌ 모델 경로가 None입니다. 로딩을 중단합니다.")
         return None
+
     model_pipeline = load_model(model_path, model_type)
+
+    # IP-Adapter 주입 (옵션)
+    if use_ip_adapter and not hasattr(model_pipeline, "image_proj_model"):
+        try:
+            adapter_config = ip_adapter_config or {
+                "repo_id": "h94/IP-Adapter",
+                "subfolder": "sdxl_models",
+                "weight_name": "ip-adapter_sdxl.bin",
+                "scale": 0.8,
+            }
+            model_pipeline.load_ip_adapter(
+                adapter_config["repo_id"],
+                subfolder=adapter_config["subfolder"],
+                weight_name=adapter_config["weight_name"],
+            )
+            model_pipeline.set_ip_adapter_scale(adapter_config["scale"])
+            logger.info("✅ IP-Adapter 자동 주입 완료")
+        except Exception as e:
+            logger.warning(f"⚠️ IP-Adapter 자동 주입 실패: {e}")
+            
     return model_pipeline
