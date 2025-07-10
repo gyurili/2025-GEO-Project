@@ -270,7 +270,7 @@ class Txt2ImgGenerator:
             self, 
             prompt: str,
             negative_prompt: str = None,
-            size=(1024, 1024),
+            size=(512, 512),
             num_inference_steps: int = 50, # 샘플링 단계 수
             guidance_scale: float = 7.5, # 안내 척도 (CFG Scale)
         ) -> Image.Image:
@@ -281,7 +281,7 @@ class Txt2ImgGenerator:
             prompt (str): 이미지를 생성할 긍정 프롬프트.
             negative_prompt (str, optional): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
                                             기본값은 None.
-            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (1024, 1024).
+            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (512, 512).
             num_inference_steps (int, optional): 이미지 생성에 사용할 샘플링 단계 수.
                                                 값이 높을수록 품질은 좋아지지만 시간이 오래 걸릴 수 있습니다.
                                                 기본값은 50.
@@ -325,8 +325,8 @@ class Img2ImgGenerator:
             prompt: str,
             reference_image: Image.Image,
             negative_prompt: str = None,
-            size=(1024, 1024),
-            num_inference_steps: int = 50, # 샘플링 단계 수
+            size=(512, 512),
+            num_inference_steps: int = 99, # 샘플링 단계 수
             guidance_scale: float = 5.0, # 안내 척도 (CFG Scale)
         ) -> tuple[Image.Image, str]:
         """
@@ -338,14 +338,12 @@ class Img2ImgGenerator:
             mask_image (PIL.Image.Image): 재생성할 곳을 표시하는 마스크 이미지
             negative_prompt (str, optional): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
                                             기본값은 None.
-            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (1024, 1024).
+            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (512, 512).
             num_inference_steps (int, optional): 이미지 생성에 사용할 샘플링 단계 수.
                                                 값이 높을수록 품질은 좋아지지만 시간이 오래 걸릴 수 있습니다.
-                                                기본값은 4.
             guidance_scale (float, optional): Classifier-Free Guidance (CFG) 척도.
                                             프롬프트에 얼마나 충실하게 이미지를 생성할지 조절합니다.
                                             값이 높을수록 프롬프트에 더 충실하지만, 다양성이 줄어들 수 있습니다.
-                                            기본값은 0.5.
 
         Returns:
             PIL.Image.Image: 생성된 이미지 객체. 오류 발생 시 None 반환.

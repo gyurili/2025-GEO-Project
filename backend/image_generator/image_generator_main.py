@@ -53,7 +53,7 @@ def image_generator_main(
 
     # 3. 프롬프트 생성
     logger.debug("🛠️ 프롬프트 생성 시작")
-    prompts = generate_prompts(product, mode="background")
+    prompts = generate_prompts(product, mode="human")
 
     if prompts:
         logger.info("✅ 프롬프트 생성 완료")
