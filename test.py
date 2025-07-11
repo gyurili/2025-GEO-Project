@@ -5,25 +5,26 @@ import torch
 from PIL import Image
 from backend.image_generator.core.background_handler import BackgroundHandler
 
-vae = AutoencoderKL.from_pretrained("madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16)
-
-pipeline = AutoPipelineForInpainting.from_pretrained("diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
-                                                     vae=vae,
-                                                     torch_dtype=torch.float16,
-                                                     variant="fp16",
-                                                     use_safetensors=True
-                                                    ).to("cuda")
-
-pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="sdxl_models", weight_name="ip-adapter_sdxl.bin", low_cpu_mem_usage=True)
-
 image = load_image('https://cdn-uploads.huggingface.co/production/uploads/648a824a8ca6cf9857d1349c/jpFBKqYB3BtAW26jCGJKL.jpeg').convert("RGB")
 
-ip_image = load_image('/home/user/2025-GEO-Project/backend/data/input/suit.jpg').convert("RGB")
+ip_image = load_image('/home/user/2025-GEO-Project/backend/data/input/greendress.jpg').convert("RGB")
 
 mask_image= load_image('/home/user/2025-GEO-Project/backend/data/input/model_mask.png')
 
-pipeline.set_ip_adapter_scale(2.5)
-pipeline.load_lora_weights('Rac11m/sd-tryon-model-lora-sdxl', weight_name='pytorch_lora_weights.safetensors')
+vae = AutoencoderKL.from_pretrained("madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16)
+
+pipeline = AutoPipelineForInpainting.from_pretrained(
+    "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+    vae=vae,
+    torch_dtype=torch.float16,
+    variant="fp16",
+    use_safetensors=True
+).to("cuda")
+
+pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="sdxl_models", weight_name="ip-adapter_sdxl.bin", low_cpu_mem_usage=True)
+pipeline.set_ip_adapter_scale(2.0)
+
+pipeline.load_lora_weights('Norod78/weird-fashion-show-outfits-sdxl-lora', weight_name='sdxl-WeirdOutfit-Dreambooh.safetensors')
 
 now = datetime.datetime.now()
 seed = int(now.strftime("%Y%m%d%H%M%S"))
