@@ -26,7 +26,7 @@ def keyword_variation_prompt():
     핵심 키워드를 반복하되, 같은 단어를 반복하기보다는 동의어나 유사 표현을 사용해 다양하게 노출해주세요.
     문장 전체의 자연스러움을 해치지 않도록 주의해주세요."
     """
-    
+
 def html_structure_prompt():
     return f"""
     HTML은 H1~H3 계층 구조를 따르며, 핵심 단어에는 <strong>, <blockquote> 등의 태그를 활용해주세요.
