@@ -1,6 +1,8 @@
 import yaml
 import os
 import sys
+import datetime
+import torch
 from PIL import Image
 
 from utils.logger import get_logger
@@ -20,9 +22,9 @@ def image_generator_main(
     product: dict,
     image_path: str, 
     prompt_mode: str = "human",
-    model_id: str = "stabilityai/sdxl-turbo",
+    model_id: str = "SG161222/RealVisXL_V4.0",
     model_type: str = "diffusion",
-    ip_adapter_scale: float = 0.8,
+    ip_adapter_scale: float = 0.5,
     num_inference_steps: int = 99,
     guidance_scale: float = 7.5,
     output_dir_path: str = "backend/data/output/",
@@ -84,7 +86,13 @@ def image_generator_main(
     else:
         logger.error("❌ 모델 다운로드 또는 로드 실패.")
 
-    # 5. 제품에 배경 이미지 생성하기
+    # 시각 기반 랜덤시드 생성 년월일시분초
+    now = datetime.datetime.now()
+    seed = int(now.strftime("%Y%m%d%H%M%S"))
+    generator = torch.manual_seed(seed)
+    logger.debug(f"🛠️ 날짜 시드: {seed}")
+
+    # 5. 제품 이미지 생성하기
     logger.debug("🛠️ 모델 파이프라인으로 이미지 생성 시작")
     try:
         img_2_img_gen = Img2ImgGenerator(pipeline)
@@ -93,11 +101,17 @@ def image_generator_main(
             reference_image=processed_image,
             filename=filename,
             negative_prompt=prompts["negative_prompt"],
+            size=(512, 512),
+            generator=generator,
             num_inference_steps=num_inference_steps,
-            guidance_scale=guidance_scale
+            guidance_scale=guidance_scale,
         )
         logger.info("✅ 이미지 생성 성공")
     except Exception as e:
         logger.error(f"❌ 이미지 생성 중 에러 발생: {e}")
+        return False
 
-    return {"image": gen_image}
+    return {
+        "image": gen_image,
+        "image_path": image_path
+    }
