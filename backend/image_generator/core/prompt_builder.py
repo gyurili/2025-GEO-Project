@@ -14,7 +14,6 @@ def build_prompt(
     return f"""
     - 상품명: {product['name']}
     - 카테고리: {product['category']}
-    - 브랜드: {product['brand']}
     - 가격: {product['price']}원
     - 특징: {product['features']}
     """

@@ -8,9 +8,6 @@ from .image_loader import ImageLoader
 
 logger = get_logger(__name__)
 
-"""
-TODO: rembg의 파라미터 확인 후에 배경제거가 잘 되는 것으로 수정 필요
-"""
 
 class BackgroundHandler:
     """
@@ -272,6 +269,7 @@ class Txt2ImgGenerator:
             filename: str,
             negative_prompt: str = None,
             size=(512, 512),
+            generator=None,
             num_inference_steps: int = 50, # 샘플링 단계 수
             guidance_scale: float = 7.5, # 안내 척도 (CFG Scale)
         ) -> Image.Image:
@@ -303,7 +301,8 @@ class Txt2ImgGenerator:
                 width=size[0],
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
-                num_images_per_prompt=1
+                num_images_per_prompt=1,
+                generator=generator
             ).images[0]
             logger.info(f"✅ 배경 이미지 생성 완료")
 
@@ -330,6 +329,7 @@ class Img2ImgGenerator:
             filename: str,
             negative_prompt: str = None,
             size=(512, 512),
+            generator=None,
             num_inference_steps: int = 99, # 샘플링 단계 수
             guidance_scale: float = 5.0, # 안내 척도 (CFG Scale)
         ) -> tuple[Image.Image, str]:
@@ -369,7 +369,8 @@ class Img2ImgGenerator:
                 width=size[0],
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
-                num_images_per_prompt=1
+                num_images_per_prompt=1,
+                generator=generator,
             ).images[0]
             logger.info(f"✅ 이미지 생성 완료")
             
