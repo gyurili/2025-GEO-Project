@@ -2,8 +2,8 @@ from pydantic import BaseModel
 from typing import List
 
 class ImageGenRequest(BaseModel):
-    product_name: str
+    name: str
     category: str
-    features: List[str]
+    price: int
+    features: str
     image_path: str
-    layout_hint: str  # "top-left", "bottom-center", etc.

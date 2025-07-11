@@ -6,6 +6,12 @@ data:
   output_path: backend/data/output
   result_path: backend/data/result
 
+db_config:
+  "host": "34.55.195.44" # 외부 아이피
+  "user": "GEOGEO"
+  "password": ""
+  "db": "geo_db"
+
 input:
   name: "우일 여성 여름 인견 7부 블라우스"
   category: "블라우스"
@@ -13,4 +19,5 @@ input:
   brand: "우일"
   features: "인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감"
   image_path: "data/input/product.jpg"
-  css_type: 1
+
+

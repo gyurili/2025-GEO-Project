@@ -8,9 +8,6 @@ from .image_loader import ImageLoader
 
 logger = get_logger(__name__)
 
-"""
-TODO: rembg의 파라미터 확인 후에 배경제거가 잘 되는 것으로 수정 필요
-"""
 
 class BackgroundHandler:
     """
@@ -160,7 +157,7 @@ class BackgroundHandler:
             alpha = transparent_image.getchannel("A")
 
             # 마스크 생성: 배경(투명, alpha=0)은 흰색(255), 제품(불투명, alpha>0)은 검정(0)
-            mask = alpha.point(lambda p: 255 if p == 0 else 0).convert("L")
+            mask = alpha.point(lambda p: 0 if p == 0 else 255).convert("L")
 
             # 저장
             os.makedirs(output_dir, exist_ok=True)
@@ -269,8 +266,10 @@ class Txt2ImgGenerator:
     def generate_background(
             self, 
             prompt: str,
+            filename: str,
             negative_prompt: str = None,
-            size=(1024, 1024),
+            size=(512, 512),
+            generator=None,
             num_inference_steps: int = 50, # 샘플링 단계 수
             guidance_scale: float = 7.5, # 안내 척도 (CFG Scale)
         ) -> Image.Image:
@@ -281,7 +280,7 @@ class Txt2ImgGenerator:
             prompt (str): 이미지를 생성할 긍정 프롬프트.
             negative_prompt (str, optional): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
                                             기본값은 None.
-            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (1024, 1024).
+            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (512, 512).
             num_inference_steps (int, optional): 이미지 생성에 사용할 샘플링 단계 수.
                                                 값이 높을수록 품질은 좋아지지만 시간이 오래 걸릴 수 있습니다.
                                                 기본값은 50.
@@ -302,10 +301,13 @@ class Txt2ImgGenerator:
                 width=size[0],
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
-                num_images_per_prompt=1
+                num_images_per_prompt=1,
+                generator=generator
             ).images[0]
             logger.info(f"✅ 배경 이미지 생성 완료")
-            save_path = "backend/data/output/txt2img.png"
+
+            name_without_ext, _ = os.path.splitext(filename)
+            save_path = f"backend/data/output/{name_without_ext}.png"
             image.save(save_path)
             logger.info(f"✅ 배경 이미지가 {save_path}에 생성되었습니다.")
             return image, save_path
@@ -324,9 +326,11 @@ class Img2ImgGenerator:
             self, 
             prompt: str,
             reference_image: Image.Image,
+            filename: str,
             negative_prompt: str = None,
-            size=(1024, 1024),
-            num_inference_steps: int = 100, # 샘플링 단계 수
+            size=(512, 512),
+            generator=None,
+            num_inference_steps: int = 99, # 샘플링 단계 수
             guidance_scale: float = 5.0, # 안내 척도 (CFG Scale)
         ) -> tuple[Image.Image, str]:
         """
@@ -335,17 +339,16 @@ class Img2ImgGenerator:
         Args:
             prompt (str): 이미지를 생성할 긍정 프롬프트.
             reference_image (PIL.Image.Image): 기반이 되는 이미지
+            filename (str): 원본 파일 이름
             mask_image (PIL.Image.Image): 재생성할 곳을 표시하는 마스크 이미지
             negative_prompt (str, optional): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
                                             기본값은 None.
-            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (1024, 1024).
+            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (512, 512).
             num_inference_steps (int, optional): 이미지 생성에 사용할 샘플링 단계 수.
                                                 값이 높을수록 품질은 좋아지지만 시간이 오래 걸릴 수 있습니다.
-                                                기본값은 4.
             guidance_scale (float, optional): Classifier-Free Guidance (CFG) 척도.
                                             프롬프트에 얼마나 충실하게 이미지를 생성할지 조절합니다.
                                             값이 높을수록 프롬프트에 더 충실하지만, 다양성이 줄어들 수 있습니다.
-                                            기본값은 0.5.
 
         Returns:
             PIL.Image.Image: 생성된 이미지 객체. 오류 발생 시 None 반환.
@@ -366,14 +369,16 @@ class Img2ImgGenerator:
                 width=size[0],
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,
-                num_images_per_prompt=1
+                num_images_per_prompt=1,
+                generator=generator,
             ).images[0]
             logger.info(f"✅ 이미지 생성 완료")
             
-            save_path = "backend/data/output/img2img.png"
+            name_without_ext, _ = os.path.splitext(filename)
+            save_path = f"backend/data/output/{name_without_ext}.png"
             image.save(save_path)
             logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
             return image, save_path
         except Exception as e:
-            logger.error(f"❌ 텍스트-이미지 생성 중 오류 발생: {e}")
+            logger.error(f"❌ 이미지-이미지 생성 중 오류 발생: {e}")
             return None
