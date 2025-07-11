@@ -24,4 +24,7 @@ sentencepiece
 openai
 ip-adapter
 einops
-
+uvicorn
+fastapi
+streamlit
+python-multipart

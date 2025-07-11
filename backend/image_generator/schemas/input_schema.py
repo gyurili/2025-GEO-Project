@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import List
 
 class ImageGenRequest(BaseModel):
-    product_name: str
+    name: str
     category: str
     price: int
     features: str
