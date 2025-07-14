@@ -7,12 +7,11 @@ data:
   result_path: backend/data/result
 
 input:
-  name: "베이직 남성 회색 라운드 니트 스웨터"
-  category: "니트/스웨터"
-  price: 39800
-  brand: "베이직웨어"
-  features: "부드러운 촉감, 라운드 넥 디자인, 데일리 캐주얼 스타일, 보온성 우수"
-  image_path: "backend/data/input/test2.jpg"
+  name: "민트 그린 썸머 나시 드레스"
+  category: "여성의류 > 드레스 > 썸머드레스"
+  price: 98000
+  features: "상큼한 민트 그린 컬러의 가벼운 소재, 슬림핏 실루엣으로 여름 분위기 연출, 부드러운 나시 디자인으로 활동성 우수, 피크닉이나 데일리 외출에 적합"
+  image_path: "backend/data/input/greendress.jpg"
   css_type: 1
 
 db_config:

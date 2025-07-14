@@ -23,8 +23,11 @@ dotenv
 sentencepiece
 openai
 ip-adapter
-einops
 uvicorn
 fastapi
 streamlit
 python-multipart
+peft
+controlnet_aux
+# mediapipe
+basicsr
