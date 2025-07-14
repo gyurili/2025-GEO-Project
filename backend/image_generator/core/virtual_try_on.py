@@ -159,7 +159,7 @@ def run_virtual_tryon(
     ip_adapter_repo: str = "h94/IP-Adapter",
     ip_adapter_subfolder: str = "sdxl_models",
     ip_adapter_weight: str = "ip-adapter_sdxl.bin",
-    ip_adapter_scale: float = 2.0,
+    ip_adapter_scale: float = 0.8,
     lora_repo: str = "Norod78/weird-fashion-show-outfits-sdxl-lora",
     lora_weight: str = "sdxl-WeirdOutfit-Dreambooh.safetensors",
     width: int = 512,
@@ -199,21 +199,29 @@ def run_virtual_tryon(
     Returns:
         PIL.Image.Image: 생성된 가상 피팅 이미지
     """
-
+    logger.debug("🛠️ 입력 이미지 로딩 시작")
     image = load_image(image_path).convert("RGB")
     ip_image = load_image(ip_image_path).convert("RGB")
     mask_image = load_image(mask_image_path)
+    logger.info("✅ 입력 이미지, 의상 이미지, 마스크 로딩 완료")
 
+    logger.debug("🛠️ Midas Depth 제어 이미지 생성 시작")
     midas_detector = MidasDetector.from_pretrained("lllyasviel/ControlNet")
     control_image_depth = midas_detector(image).resize((width, height)).convert("RGB")
+    logger.info("✅ Depth 제어 이미지 생성 완료")
 
+    logger.debug("🛠️ VAE 모델 로딩 시작")
     vae = AutoencoderKL.from_pretrained(vae_model, torch_dtype=torch.float16)
+    logger.info("✅ VAE 모델 로딩 완료")
 
+    logger.debug("🛠️ ControlNet 모델 로딩 시작")
     controlnet = ControlNetModel.from_pretrained(
         controlnet_model,
         torch_dtype=torch.float16
     )
+    logger.info("✅ ControlNet 모델 로딩 완료")
 
+    logger.debug("🛠️ 파이프라인 로딩 시작")
     pipeline = AutoPipelineForInpainting.from_pretrained(
         pipeline_model,
         vae=vae,
@@ -221,9 +229,10 @@ def run_virtual_tryon(
         variant="fp16",
         use_safetensors=True
     ).to("cuda")
-
     pipeline.controlnet = controlnet
+    logger.info("✅ 파이프라인 로딩 및 ControlNet 주입 완료")
 
+    logger.debug("🛠️ IP-Adapter 로딩 시작")
     pipeline.load_ip_adapter(
         ip_adapter_repo,
         subfolder=ip_adapter_subfolder,
@@ -231,15 +240,19 @@ def run_virtual_tryon(
         low_cpu_mem_usage=True
     )
     pipeline.set_ip_adapter_scale(ip_adapter_scale)
+    logger.info("✅ IP-Adapter 로딩 및 스케일 설정 완료")
 
+    logger.debug("🛠️ LoRA 로딩 시작")
     pipeline.load_lora_weights(lora_repo, weight_name=lora_weight)
+    logger.info("✅ LoRA 로딩 완료")
 
     if seed is None:
         now = datetime.datetime.now()
         seed = int(now.strftime("%Y%m%d%H%M%S"))
     generator = torch.manual_seed(seed)
-    print(f"🛠️ 날짜 시드: {seed}")
+    logger.info(f"🎲 시드 설정 완료: {seed}")
 
+    logger.debug("🛠️ 이미지 생성 시작")
     final_image = pipeline(
         prompt=prompt,
         negative_prompt=negative_prompt,
@@ -255,5 +268,6 @@ def run_virtual_tryon(
         num_inference_steps=num_inference_steps,
         generator=generator,
     ).images[0]
+    logger.info("✅ 이미지 생성 완료")
 
     return final_image
