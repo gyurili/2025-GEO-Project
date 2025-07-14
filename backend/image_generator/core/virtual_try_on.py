@@ -95,7 +95,7 @@ class VirtualTryOnPipeline:
             weight_name="ip-adapter_sdxl.bin",
             low_cpu_mem_usage=True
         )
-        self.pipeline.set_ip_adapter_scale(2.0)
+        self.pipeline.set_ip_adapter_scale(3.0)
         logger.info("✅ IP-Adapter 모델 로딩 완료")
 
         logger.debug("🛠️ LoRA 로딩 시작")
@@ -147,66 +147,113 @@ class VirtualTryOnPipeline:
         return final_image
 
 
-# try: 
-#     logger.debug("🛠️ 이미지 로딩")
-#     image = load_image('/home/user/2025-GEO-Project/backend/data/output/model_removed_bg.png').convert("RGB")
-#     ip_image = load_image('/home/user/2025-GEO-Project/backend/data/output/greendress_removed_bg.png').convert("RGB")
-#     mask_image= load_image('/home/user/2025-GEO-Project/backend/data/input/model_mask3.png')
+def run_virtual_tryon(
+    image_path: str,
+    ip_image_path: str,
+    mask_image_path: str,
+    prompt: str,
+    negative_prompt: str,
+    vae_model: str = "madebyollin/sdxl-vae-fp16-fix",
+    controlnet_model: str = "diffusers/controlnet-depth-sdxl-1.0",
+    pipeline_model: str = "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+    ip_adapter_repo: str = "h94/IP-Adapter",
+    ip_adapter_subfolder: str = "sdxl_models",
+    ip_adapter_weight: str = "ip-adapter_sdxl.bin",
+    ip_adapter_scale: float = 2.0,
+    lora_repo: str = "Norod78/weird-fashion-show-outfits-sdxl-lora",
+    lora_weight: str = "sdxl-WeirdOutfit-Dreambooh.safetensors",
+    width: int = 512,
+    height: int = 768,
+    controlnet_conditioning_scale: float = 0.7,
+    strength: float = 0.99,
+    guidance_scale: float = 7.5,
+    num_inference_steps: int = 100,
+    seed: int = None,
+):
+    """
+    주어진 이미지, 마스크, 의상 이미지에 대해 가상 피팅 이미지를 생성합니다.
 
-#     logger.debug("🛠️ Depth Detector 로딩")
-#     midas_detector = MidasDetector.from_pretrained("lllyasviel/ControlNet")
-#     control_image_depth = midas_detector(image)
+    Parameters:
+        image_path (str): 모델 이미지 경로
+        ip_image_path (str): 의상 이미지 경로 (배경 제거된 옷 이미지)
+        mask_image_path (str): 옷을 입힐 영역의 마스크 이미지 경로
+        prompt (str): 긍정 프롬프트 (이미지 생성 방향)
+        negative_prompt (str): 부정 프롬프트 (회피할 특징)
+        vae_model (str): VAE 모델 경로 또는 허깅페이스 ID
+        controlnet_model (str): ControlNet 모델 경로 또는 ID
+        pipeline_model (str): Stable Diffusion Inpainting 모델 경로 또는 ID
+        ip_adapter_repo (str): IP-Adapter 허깅페이스 repo ID
+        ip_adapter_subfolder (str): IP-Adapter 모델 서브폴더
+        ip_adapter_weight (str): IP-Adapter 가중치 파일명
+        ip_adapter_scale (float): IP-Adapter scale 값
+        lora_repo (str): LoRA 모델 repo ID
+        lora_weight (str): 사용할 safetensors 파일 이름
+        width (int): 생성 이미지 너비
+        height (int): 생성 이미지 높이
+        controlnet_conditioning_scale (float): ControlNet 반영 비율
+        strength (float): Inpainting strength
+        guidance_scale (float): Classifier-free guidance scale
+        num_inference_steps (int): 생성 스텝 수
+        seed (int, optional): 생성 시드 (None이면 현재 시간 기준)
 
-#     logger.debug("🛠️ VAE 로딩")
-#     vae = AutoencoderKL.from_pretrained("madebyollin/sdxl-vae-fp16-fix", torch_dtype=torch.float16)
+    Returns:
+        PIL.Image.Image: 생성된 가상 피팅 이미지
+    """
 
-#     logger.debug("🛠️ ControlNet 로딩")
-#     controlnet = ControlNetModel.from_pretrained(
-#         "diffusers/controlnet-depth-sdxl-1.0",
-#         torch_dtype=torch.float16
-#     )
+    image = load_image(image_path).convert("RGB")
+    ip_image = load_image(ip_image_path).convert("RGB")
+    mask_image = load_image(mask_image_path)
 
-#     logger.debug("🛠️ Pipeline 로딩")
-#     pipeline = AutoPipelineForInpainting.from_pretrained(
-#         "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
-#         vae=vae,
-#         torch_dtype=torch.float16,
-#         variant="fp16",
-#         use_safetensors=True
-#     ).to("cuda")
+    midas_detector = MidasDetector.from_pretrained("lllyasviel/ControlNet")
+    control_image_depth = midas_detector(image).resize((width, height)).convert("RGB")
 
-#     logger.debug("🛠️ ControlNet 주입")
-#     pipeline.controlnet = controlnet
+    vae = AutoencoderKL.from_pretrained(vae_model, torch_dtype=torch.float16)
 
-#     logger.debug("🛠️ IP-Adapter 주입")
-#     pipeline.load_ip_adapter("h94/IP-Adapter", subfolder="sdxl_models", weight_name="ip-adapter_sdxl.bin", low_cpu_mem_usage=True)
-#     pipeline.set_ip_adapter_scale(2.0)
+    controlnet = ControlNetModel.from_pretrained(
+        controlnet_model,
+        torch_dtype=torch.float16
+    )
 
-#     logger.debug("🛠️ LoRA 주입")
-#     pipeline.load_lora_weights('Norod78/weird-fashion-show-outfits-sdxl-lora', weight_name='sdxl-WeirdOutfit-Dreambooh.safetensors')
+    pipeline = AutoPipelineForInpainting.from_pretrained(
+        pipeline_model,
+        vae=vae,
+        torch_dtype=torch.float16,
+        variant="fp16",
+        use_safetensors=True
+    ).to("cuda")
 
-#     now = datetime.datetime.now()
-#     seed = int(now.strftime("%Y%m%d%H%M%S"))
-#     generator = torch.manual_seed(seed)
-#     logger.debug(f"🛠️ 날짜 시드: {seed}")
-    
-#     logger.debug(f"🛠️ 이미지 생성 시작")
-#     final_image = pipeline(
-#         prompt="photorealistic, perfect body, beautiful skin, realistic skin, natural skin, a man wearing blue suit.",
-#         negative_prompt="ugly, bad quality, bad anatomy, deformed body, deformed hands, deformed feet, deformed face, deformed clothing, deformed skin, bad skin, leggings, tights, stockings",
-#         width=512,
-#         height=768,
-#         image=image,
-#         mask_image=mask_image,
-#         ip_adapter_image=ip_image,
-#         control_image=control_image_depth,
-#         controlnet_conditioning_scale=0.7,
-#         strength=0.99,
-#         guidance_scale=7.5,
-#         num_inference_steps=100,
-#         generator=generator,
-#     ).images[0]
-#     logger.info(f"✅ 이미지 생성 완료")
-#     final_image.save("final_image.png")
-# except Exception as e:
-#     logger.warning(f"❌ 에러 발생: {e}")
+    pipeline.controlnet = controlnet
+
+    pipeline.load_ip_adapter(
+        ip_adapter_repo,
+        subfolder=ip_adapter_subfolder,
+        weight_name=ip_adapter_weight,
+        low_cpu_mem_usage=True
+    )
+    pipeline.set_ip_adapter_scale(ip_adapter_scale)
+
+    pipeline.load_lora_weights(lora_repo, weight_name=lora_weight)
+
+    if seed is None:
+        now = datetime.datetime.now()
+        seed = int(now.strftime("%Y%m%d%H%M%S"))
+    generator = torch.manual_seed(seed)
+    print(f"🛠️ 날짜 시드: {seed}")
+
+    final_image = pipeline(
+        prompt=prompt,
+        negative_prompt=negative_prompt,
+        width=width,
+        height=height,
+        image=image,
+        mask_image=mask_image,
+        ip_adapter_image=ip_image,
+        control_image=control_image_depth,
+        controlnet_conditioning_scale=controlnet_conditioning_scale,
+        strength=strength,
+        guidance_scale=guidance_scale,
+        num_inference_steps=num_inference_steps,
+        generator=generator,
+    ).images[0]
+
+    return final_image
