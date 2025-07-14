@@ -5,7 +5,7 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG_PATH = os.path.join(BASE_DIR, "config.yaml")
 ENV_PATH = os.path.join(BASE_DIR, ".env")
 
