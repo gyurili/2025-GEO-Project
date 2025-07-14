@@ -18,14 +18,17 @@ async def generate_image(rqeust: Request, input_schema: ImageGenRequest):
             "features": input_schema.features
         }
 
+        loggger.debug("🛠️ 이미지 생성 시작")
         result = image_generator_main(
             product=product_info,
             image_path=input_schema.image_path
         )
 
         if result is False:
+            logger.error("❌ 이미지 생성중 에러 발생")
             raise HTTPException(status_code=500, detail="이미지 생성 실패")
 
+        logger.info("✅ 이미지 생성 성공")
         return {
             "message": "이미지 생성 성공",
             "image_path": result.get("image_path", "N/A"),
