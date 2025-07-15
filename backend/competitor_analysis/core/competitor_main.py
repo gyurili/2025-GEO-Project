@@ -88,3 +88,24 @@ async def competitor_main(
     except Exception as e:
         logger.error(f"❌ 경쟁사 분석 실패: {type(e).__name__}: {e!r}")
         return CompetitorOutput(differences=[])
+    
+if __name__ == "__main__":
+    import asyncio
+    from backend.competitor_analysis.schemas.input_schema import ProductInput
+
+    # 테스트용 입력 데이터
+    test_product = ProductInput(
+        name="쿠쿠 IH 전기압력밥솥 6인용",
+        category="주방용품",
+        price=189000,
+        brand="쿠쿠",
+        features="IH 가열, 6인용, 분리형 커버, 예약취사, 고압모드 지원",
+        image_path="", 
+        css_type=1  
+    )
+
+    # competitor_main은 async 함수이므로 asyncio.run으로 호출!
+    result = asyncio.run(competitor_main(test_product))
+    print("분석 결과:", result)
+    # result.differences가 리스트라면 아래처럼도
+    print("차별점 리스트:", result.differences)
