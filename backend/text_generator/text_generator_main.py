@@ -3,17 +3,15 @@ import yaml
 from datetime import datetime, timedelta, timezone
 from utils.logger import get_logger
 from backend.text_generator.core.text_generator import generate_html
-from backend.text_generator.schemas.input_schema import TextGenRequest
 
 logger = get_logger(__name__)
 
 
-def text_generator_main(product: TextGenRequest, differences: list[str], output_path: str):
-    product_dict = product.dict()
+def text_generator_main(product: dict, differences: list[str], output_path: str):
     if differences:
-        product_dict["differences"] = differences
+        product["differences"] = differences
     
-    result = generate_html(product_dict)
+    result = generate_html(product)
     
     logger.debug(f"🛠️ 파일명 생성 시작")
     KST = timezone(timedelta(hours=9))
