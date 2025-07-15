@@ -7,7 +7,7 @@ data:
   result_path: backend/data/result
 
 db_config:
-  "host": "34.55.195.44" # 외부 아이피
+  "host": "34.66.178.112"
   "user": "GEOGEO"
   "password": ""
   "db": "geo_db"
