@@ -84,7 +84,7 @@ async def competitor_main(
         else:
             logger.warning("⚠️ 차별점 문장 생성 결과가 비어 있음")
 
-        return CompetitorOutput(differences=differences)
+        return CompetitorOutput(differences=differences).model_dump()
     except Exception as e:
         logger.error(f"❌ 경쟁사 분석 실패: {type(e).__name__}: {e!r}")
         return CompetitorOutput(differences=[])
