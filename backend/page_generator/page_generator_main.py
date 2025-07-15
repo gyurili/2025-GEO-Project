@@ -9,13 +9,12 @@ logger = get_logger(__name__)
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
 
-def page_generator_main(config, session_id: str):
+def page_generator_main(product: dict, session_id: str):
     # 경로 지정
-    css_type = config["input"].get("css_type", 1)
-    css_template_path = os.path.join(base_dir, f"backend/page_generator/css/type{css_type}.css")
+    css_type = product.get("css_type", 1)
     
-    draft_html_filename = f"draft_{session_id}.html"
-    draft_html_path = os.path.join(base_dir, "backend/data/output", draft_html_filename)
+    css_template_path = os.path.join(base_dir, f"backend/page_generator/css/type{css_type}.css")
+    draft_html_path = os.path.join(base_dir, "backend/data/output", f"draft_{session_id}.html")
     final_image_path = os.path.join(base_dir, "backend/data/result", f"final_{session_id}.png")
 
     # 원본 HTML 로드

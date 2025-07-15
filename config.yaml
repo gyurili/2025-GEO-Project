@@ -13,9 +13,10 @@ db_config:
   "db": "geo_db"
 
 input:
-  name: "민트 그린 썸머 나시 드레스"
-  category: "여성의류 > 드레스 > 썸머드레스"
-  price: 98000
-  features: "상큼한 민트 그린 컬러의 가벼운 소재, 슬림핏 실루엣으로 여름 분위기 연출, 부드러운 나시 디자인으로 활동성 우수, 피크닉이나 데일리 외출에 적합"
+  name: "우일 여성 여름 인견 7부 블라우스"
+  category: "블라우스"
+  price: 18000
+  brand: "우일"
+  features: "인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감"
   image_path: "backend/data/input/greendress.jpg"
   css_type: 1

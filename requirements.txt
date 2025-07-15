@@ -9,6 +9,10 @@ python-dotenv
 imgkit
 
 # 이학진
+pymysql
+undetected_chromedriver
+bs4
+fake_useragent
 
 # 정영선
 pillow
