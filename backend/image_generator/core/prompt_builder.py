@@ -15,6 +15,7 @@ def build_prompt(
     - 상품명: {product['name']}
     - 카테고리: {product['category']}
     - 가격: {product['price']}원
+    - 브랜드: {product['brand']}
     - 특징: {product['features']}
     """
 
@@ -83,9 +84,9 @@ def generate_human_prompt(product: dict) -> str | None:
             temperature=0.7,
         )
 
-        neg_prompt = response.choices[0].message.content.strip()
-        logger.info(f"✅ 생성된 사람 프롬프트: {neg_prompt}")
-        return neg_prompt
+        human_prompt = response.choices[0].message.content.strip()
+        logger.info(f"✅ 생성된 사람 프롬프트: {human_prompt}")
+        return human_prompt
 
     except Exception as e:
         logger.error(f"❌ 사람 프롬프트 생성 실패: {e}")

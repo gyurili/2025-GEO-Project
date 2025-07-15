@@ -107,19 +107,19 @@ class VirtualTryOnPipeline:
         logger.info("✅ LoRA 로딩 완료")
         logger.info("✅ 모든 모델 로딩 및 준비 완료.")
 
-    def try_on(self, image_path, ip_image_path, mask_image_path, prompt, negative_prompt,
+    def try_on(self, model_image_path, ip_image_path, mask_image_path, prompt, negative_prompt,
                width=512, height=768, controlnet_conditioning_scale=0.7,
                strength=0.99, guidance_scale=7.5, num_inference_steps=100, seed=None):
         """
         가상 피팅을 실행하고 결과 이미지를 반환합니다.
         """
         logger.debug("🛠️ 입력 이미지 로딩")
-        image = load_image(image_path).convert("RGB")
+        model_image = load_image(model_image_path).convert("RGB")
         ip_image = load_image(ip_image_path).convert("RGB")
         mask_image = load_image(mask_image_path)
 
         logger.debug("🛠️ ControlNet 제어 이미지 생성")
-        control_image_depth = self.midas_detector(image)
+        control_image_depth = self.midas_detector(model_image)
 
         if seed is None:
             now = datetime.datetime.now()
@@ -133,7 +133,7 @@ class VirtualTryOnPipeline:
             negative_prompt=negative_prompt,
             width=width,
             height=height,
-            image=image,
+            model_image=model_image,
             mask_image=mask_image,
             ip_adapter_image=ip_image,
             control_image=control_image_depth,
@@ -148,7 +148,7 @@ class VirtualTryOnPipeline:
 
 
 def run_virtual_tryon(
-    image_path: str,
+    model_image_path: str,
     ip_image_path: str,
     mask_image_path: str,
     prompt: str,
@@ -174,7 +174,7 @@ def run_virtual_tryon(
     주어진 이미지, 마스크, 의상 이미지에 대해 가상 피팅 이미지를 생성합니다.
 
     Parameters:
-        image_path (str): 모델 이미지 경로
+        model_image_path (str): 모델 이미지 경로
         ip_image_path (str): 의상 이미지 경로 (배경 제거된 옷 이미지)
         mask_image_path (str): 옷을 입힐 영역의 마스크 이미지 경로
         prompt (str): 긍정 프롬프트 (이미지 생성 방향)
@@ -200,14 +200,14 @@ def run_virtual_tryon(
         PIL.Image.Image: 생성된 가상 피팅 이미지
     """
     logger.debug("🛠️ 입력 이미지 로딩 시작")
-    image = load_image(image_path).convert("RGB")
+    model_image = load_image(model_image_path).convert("RGB")
     ip_image = load_image(ip_image_path).convert("RGB")
     mask_image = load_image(mask_image_path)
     logger.info("✅ 입력 이미지, 의상 이미지, 마스크 로딩 완료")
 
     logger.debug("🛠️ Midas Depth 제어 이미지 생성 시작")
     midas_detector = MidasDetector.from_pretrained("lllyasviel/ControlNet")
-    control_image_depth = midas_detector(image).resize((width, height)).convert("RGB")
+    control_image_depth = midas_detector(model_image).resize((width, height)).convert("RGB")
     logger.info("✅ Depth 제어 이미지 생성 완료")
 
     logger.debug("🛠️ VAE 모델 로딩 시작")
@@ -250,7 +250,7 @@ def run_virtual_tryon(
         now = datetime.datetime.now()
         seed = int(now.strftime("%Y%m%d%H%M%S"))
     generator = torch.manual_seed(seed)
-    logger.info(f"🎲 시드 설정 완료: {seed}")
+    logger.info(f"✅ 시드 설정 완료: {seed}")
 
     logger.debug("🛠️ 이미지 생성 시작")
     final_image = pipeline(
@@ -258,7 +258,7 @@ def run_virtual_tryon(
         negative_prompt=negative_prompt,
         width=width,
         height=height,
-        image=image,
+        image=model_image,
         mask_image=mask_image,
         ip_adapter_image=ip_image,
         control_image=control_image_depth,
