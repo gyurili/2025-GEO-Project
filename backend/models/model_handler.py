@@ -83,11 +83,11 @@ def download_model(
         loader_cls = MODEL_LOADERS[model_type]
         model = loader_cls.from_pretrained(model_id, token=token, **load_kwargs)
         model.save_pretrained(model_save_path)
-        logger.info(f"✅ 모델 '{model_id}'이(가) '{model_save_path}'에 저장")
+        logger.info(f"✅ {model_type} 모델 '{model_id}' 저장 완료: {model_save_path}")
         return model_save_path
 
     except Exception as e:
-        logger.error(f"❌ 모델 '{model_id}' 다운로드 및 저장 중 오류 발생: {e}")
+        logger.error(f"❌ 모델 다운로드 실패 ({model_id}): {e}")
         return None
 
 
@@ -223,3 +223,85 @@ def get_model_pipeline(
             logger.warning(f"⚠️ IP-Adapter 자동 주입 실패: {e}")
             
     return model_pipeline
+
+
+def get_vton_pipeline(
+    pipeline_model: str = "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+    vae_model: str = "madebyollin/sdxl-vae-fp16-fix",
+    controlnet_model: str = "diffusers/controlnet-depth-sdxl-1.0",
+    ip_adapter_config: dict = {
+        "repo_id": "h94/IP-Adapter",
+        "subfolder": "sdxl_models",
+        "weight_name": "ip-adapter_sdxl.bin",
+        "scale": 0.8
+    },
+    lora_config: dict = {
+        "repo_id": "Norod78/weird-fashion-show-outfits-sdxl-lora",
+        "weight_name": "sdxl-WeirdOutfit-Dreambooh.safetensors"
+    },
+):
+    """
+    Stable Diffusion 기반 VTON 파이프라인을 한 번에 준비합니다.
+    (다운로드 + 로드 + 주입 + IP-Adapter + LoRA 적용)
+
+    Args:
+        pipeline_model (str): Inpainting 파이프라인 모델 ID
+        vae_model (str): VAE 모델 ID
+        controlnet_model (str): ControlNet 모델 ID
+        ip_adapter_config (dict): IP-Adapter 설정 {repo_id, subfolder, weight_name, scale}
+        lora_config (dict): LoRA 설정 {repo_id, weight_name}
+        save_dir (str): 모델 저장 기본 경로
+
+    Returns:
+        pipeline: GPU 로드 완료된 최종 파이프라인
+    """
+    logger.debug("🛠️ vton 파이프라인 구성요소 다운로드 및 로딩 시작")
+
+    # 다운로드
+    logger.debug("🛠️ 파이프라인 다운로드 시작")
+    pipeline_path = download_model(pipeline_model, model_type="diffusion_pipeline")
+    vae_path = download_model(vae_model, model_type="vae")
+    controlnet_path = download_model(controlnet_model, model_type="controlnet")
+
+    if not all([pipeline_path, vae_path, controlnet_path]):
+        logger.error("❌ 다운로드 실패: 하나 이상의 모델이 준비되지 않음")
+        return None
+
+    # 로드
+    logger.debug("🛠️ 파이프라인 로드 시작")
+    vae = AutoencoderKL.from_pretrained(vae_path, torch_dtype=torch.float16)
+    pipeline = AutoPipelineForInpainting.from_pretrained(
+        pipeline_path,
+        vae=vae,
+        torch_dtype=torch.float16,
+        use_safetensors=True
+    ).to("cuda")
+    controlnet = ControlNetModel.from_pretrained(controlnet_path, torch_dtype=torch.float16)
+
+    # 주입
+    logger.debug("🛠️ 구성요소 주입 시작")
+    pipeline.controlnet = controlnet
+
+    # IP-Adapter 적용
+    try:
+        pipeline.load_ip_adapter(
+            ip_adapter_config["repo_id"],
+            subfolder=ip_adapter_config.get("subfolder", "sdxl_models"),
+            weight_name=ip_adapter_config["weight_name"]
+        )
+        pipeline.set_ip_adapter_scale(ip_adapter_config.get("scale", 0.8))
+        logger.info("✅ IP-Adapter 적용 완료")
+    except Exception as e:
+        logger.warning(f"⚠️ IP-Adapter 적용 실패: {e}")
+
+    # LoRA 적용
+    try:
+        pipeline.load_lora_weights(
+            lora_config["repo_id"],
+            weight_name=lora_config["weight_name"]
+        )
+        logger.info("✅ LoRA 적용 완료")
+    except Exception as e:
+        logger.warning(f"⚠️ LoRA 적용 실패: {e}")
+
+    return pipeline
