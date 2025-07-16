@@ -37,7 +37,8 @@ def page_generator_main(product: dict, session_id: str):
     # HTML → 이미지 저장
     try:
         config = imgkit.config(wkhtmltoimage='/usr/bin/wkhtmltoimage')
-        imgkit.from_string(final_html, final_image_path, config=config)
+        options = { 'enable-local-file-access': None }
+        imgkit.from_string(final_html, final_image_path, config=config, options=options)
         logger.info(f"✅ HTML → 이미지 변환 완료: {final_image_path}")
     except Exception as e:
         raise RuntimeError(f"❌ HTML → 이미지 변환 실패: {e}")
