@@ -7,9 +7,10 @@ from PIL import Image
 
 from utils.logger import get_logger
 from .core.image_loader import ImageLoader
-from .core.background_handler import Txt2ImgGenerator, BackgroundHandler, Img2ImgGenerator
+from .core.background_handler import BackgroundHandler, Img2ImgGenerator
 from .core.prompt_builder import generate_prompts
-from backend.models.model_handler import get_model_pipeline
+from .core.virtual_try_on import run_virtual_tryon
+from backend.models.model_handler import get_model_pipeline, get_vton_pipeline
 
 '''
 TODO: 상품명, 카테고리, 특징, 이미지패스, 상품링크, 차별점을 바탕으로 이미지 재구성
@@ -23,7 +24,7 @@ def image_generator_main(
     image_path: str, 
     prompt_mode: str = "human",
     model_id: str = "SG161222/RealVisXL_V4.0",
-    model_type: str = "diffusion",
+    model_type: str = "diffusion_text2img",
     ip_adapter_scale: float = 0.5,
     num_inference_steps: int = 99,
     guidance_scale: float = 7.5,
@@ -31,7 +32,39 @@ def image_generator_main(
     background_image_path: str = None,
 )-> dict | bool:
     """
-    이미지 제너레이터 메인
+    제품 이미지를 기반으로 AI 이미지 생성 파이프라인을 실행합니다.
+
+    주요 단계:
+    1. 이미지 로드:
+       - 입력 경로(`image_path`)에서 원본 이미지를 로드.
+    2. 배경 제거:
+       - 배경 제거 후 결과 이미지 저장.
+    3. 프롬프트 생성:
+       - 상품 정보를 기반으로 GEO/SEO 최적화된 프롬프트 생성.
+    4. 모델 파이프라인 로드:
+       - Hugging Face에서 지정된 diffusion 모델 로드.
+       - IP-Adapter를 사용하여 참고 이미지 기반 생성 강화.
+    5. 시드 설정:
+       - 생성 시 랜덤성 제어를 위해 시드 설정.
+    6. 이미지 생성:
+       - Img2Img 방식으로 이미지 생성.
+       - 생성된 이미지는 지정 경로에 저장.
+
+    Args:
+        product (dict): 상품명, 카테고리, 특징 등 제품 정보.
+        image_path (str): 입력 이미지 경로.
+        prompt_mode (str): 프롬프트 생성 모드 (기본값: "human").
+        model_id (str): 모델 식별자 (기본값: "SG161222/RealVisXL_V4.0").
+        model_type (str): 모델 타입 (예: "diffusion_text2img").
+        ip_adapter_scale (float): IP-Adapter 적용 강도 (0.0~1.0).
+        num_inference_steps (int): 이미지 생성 시 inference 스텝 수.
+        guidance_scale (float): CFG 스케일 (프롬프트 준수 정도).
+        output_dir_path (str): 생성 이미지 저장 디렉토리.
+        background_image_path (str): (옵션) 별도 배경 이미지 경로.
+
+    Returns:
+        dict: 생성된 이미지(`PIL.Image`)와 저장 경로.
+        bool: 실패 시 False 반환.
     """
     # 1. 이미지 로더
     logger.debug(f"🛠️ 이미지 로드 시작")
@@ -48,7 +81,7 @@ def image_generator_main(
     logger.debug(f"🛠️ 배경 제거 시작")
     background_handler = BackgroundHandler()
 
-    processed_image = background_handler.remove_background(
+    processed_image, save_path = background_handler.remove_background(
         input_image=loaded_image,
         original_filename=filename,
     )
@@ -114,4 +147,114 @@ def image_generator_main(
     return {
         "image": gen_image,
         "image_path": image_path
+    }
+
+
+def vton_generator_main(
+    model_image_path: str,
+    ip_image_path:str,
+    mask_image_path:str,
+):
+    """
+    Virtual Try-On (VTON) 기능을 통해 모델 이미지에 의류를 합성합니다.
+
+    이 함수는 다음 단계를 수행합니다:
+    1. 의류 이미지 로드:
+        - ip_image_path에서 의류 이미지를 불러옵니다.
+    2. 배경 제거:
+        - 의류 이미지의 배경을 제거하여 합성에 적합한 형태로 만듭니다.
+    3. VTON 파이프라인 준비:
+        - get_vton_pipeline()을 사용하여 Stable Diffusion 기반 파이프라인을 구성합니다.
+        - IP-Adapter 및 LoRA 모델이 주입됩니다.
+    4. 합성 실행:
+        - run_virtual_tryon()을 호출하여 모델 이미지와 의류 이미지를 합성합니다.
+        - ControlNet 기반으로 자연스러운 합성 이미지를 생성합니다.
+    5. 결과 저장:
+        - 생성된 이미지를 `backend/data/output/`에 PNG 형식으로 저장합니다.
+
+    Args:
+        model_image_path (str): 모델(사람) 이미지의 파일 경로.
+        ip_image_path (str): 의류 이미지 파일 경로.
+        mask_image_path (str): 합성할 영역의 마스크 이미지 경로.
+
+    Returns:
+        dict: {
+            "image": PIL.Image,  # 생성된 합성 이미지
+            "image_path": str    # 저장된 이미지 파일 경로
+        }
+        처리 실패 시 False 반환.
+    """
+    # 1. 의류 이미지 로드
+    logger.debug(f"🛠️ 이미지 로드 시작")
+    image_loader = ImageLoader()
+    loaded_image, filename = image_loader.load_image(image_path=ip_image_path, target_size=None)
+
+    if loaded_image is None:
+        logger.error("❌ IP 이미지 로드 실패 → 종료")
+        return False
+    logger.info("✅ IP 이미지 로드 완료")
+
+    # 2. 배경 제거
+    logger.debug(f"🛠️ 배경 제거 시작")
+    background_handler = BackgroundHandler()
+
+    ip_image, removed_bg_path = background_handler.remove_background(
+        input_image=loaded_image,
+        original_filename=filename,
+    )
+
+    if ip_image is None:
+        logger.error("❌ 배경 제거 실패 → 종료")
+        return False
+    logger.info(f"✅ 배경 제거 완료 → 임시 저장 경로: {removed_bg_path}")
+
+    # 3. VTON 파이프라인 로드
+    logger.debug("🛠️ vton 파이프라인 불러오기 시작")
+    pipeline = get_vton_pipeline(
+        pipeline_model="diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+        vae_model="madebyollin/sdxl-vae-fp16-fix",
+        controlnet_model="diffusers/controlnet-depth-sdxl-1.0",
+        ip_adapter_config={
+            "repo_id": "h94/IP-Adapter",
+            "subfolder": "sdxl_models",
+            "weight_name": "ip-adapter_sdxl.bin",
+            "scale": 1.0
+        },
+        lora_config={
+            "repo_id": "Norod78/weird-fashion-show-outfits-sdxl-lora",
+            "weight_name": "sdxl-WeirdOutfit-Dreambooh.safetensors"
+        },
+    )
+    logger.info("✅ vton 파이프라인 불러오기 완료")
+
+    # 4. VTON 실행
+    logger.debug("🛠️ vton 실행 시작")
+    try:
+        result_image = run_virtual_tryon(
+            pipeline=pipeline,
+            model_image_path=model_image_path,
+            ip_image_path=removed_bg_path,
+            mask_image_path=mask_image_path,
+            prompt="photorealistic, perfect body, beautiful skin, realistic skin, natural skin",
+            negative_prompt="ugly, bad quality, bad anatomy, deformed body, deformed hands, deformed feet, deformed face, deformed clothing, deformed skin, bad skin, leggings, tights, stockings, flat clothing, blurry textures, unnatural fabric, poor lighting",
+            width=512,
+            height=768,
+            controlnet_conditioning_scale=0.7,
+            strength=0.99,
+            guidance_scale=7.5,
+            num_inference_steps=100,
+        )
+    except Exception as e:
+        logger.error(f"❌ VTON 처리 중 오류 발생: {e}")
+        return False
+
+    # 5. 결과 저장
+    name_without_ext, _ = os.path.splitext(filename)
+    save_path = f"backend/data/output/{name_without_ext}_vton.png"
+    result_image.save(save_path)
+    logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
+
+    return {
+        "image": result_image,
+        "image_path": save_path
     }

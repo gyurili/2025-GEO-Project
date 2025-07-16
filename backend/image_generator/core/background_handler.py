@@ -71,7 +71,7 @@ class BackgroundHandler:
             output_image.save(save_path)
 
             logger.info(f"✅ 배경 제거 완료. 결과 이미지가 {save_path}에 저장되었습니다.")
-            return output_image
+            return output_image, save_path
         except Exception as e:
             logger.error(f"❌ 배경 제거 중 오류 발생: {e}")
             return None
@@ -124,7 +124,7 @@ class BackgroundHandler:
             final_image.save(save_path)
 
             logger.info(f"✅ 단색 배경 추가 완료. 결과 이미지가 {save_path}에 저장되었습니다.")
-            return final_image
+            return final_image, save_path
         except Exception as e:
             logger.error(f"❌ 단색 배경 추가 중 오류 발생: {e}")
             return None
@@ -254,65 +254,6 @@ class BackgroundHandler:
 
         except Exception as e:
             logger.error(f"❌ 이미지 배경 추가 중 오류 발생: {e}")
-            return None
-
-
-class Txt2ImgGenerator:
-    def __init__(self, pipeline):
-        logger.debug("🛠️ Txt2ImgGenerator 초기화 시작")
-        self.pipeline = pipeline  # DiffusionPipeline
-        logger.info("✅ Txt2ImgGenerator 초기화 완료")
-
-    def generate_background(
-            self, 
-            prompt: str,
-            filename: str,
-            negative_prompt: str = None,
-            size=(512, 512),
-            generator=None,
-            num_inference_steps: int = 50, # 샘플링 단계 수
-            guidance_scale: float = 7.5, # 안내 척도 (CFG Scale)
-        ) -> Image.Image:
-        """
-        주어진 프롬프트를 사용하여 배경 이미지를 생성합니다.
-
-        Args:
-            prompt (str): 이미지를 생성할 긍정 프롬프트.
-            negative_prompt (str, optional): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
-                                            기본값은 None.
-            size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (512, 512).
-            num_inference_steps (int, optional): 이미지 생성에 사용할 샘플링 단계 수.
-                                                값이 높을수록 품질은 좋아지지만 시간이 오래 걸릴 수 있습니다.
-                                                기본값은 50.
-            guidance_scale (float, optional): Classifier-Free Guidance (CFG) 척도.
-                                            프롬프트에 얼마나 충실하게 이미지를 생성할지 조절합니다.
-                                            값이 높을수록 프롬프트에 더 충실하지만, 다양성이 줄어들 수 있습니다.
-                                            기본값은 7.5.
-
-        Returns:
-            PIL.Image.Image: 생성된 이미지 객체. 오류 발생 시 None 반환.
-        """
-        try:
-            logger.debug(f"🛠️ 프롬프트로 배경 생성: {prompt}")
-            image = self.pipeline(
-                prompt=prompt,
-                negative_prompt=negative_prompt,
-                height=size[1], 
-                width=size[0],
-                num_inference_steps=num_inference_steps,
-                guidance_scale=guidance_scale,
-                num_images_per_prompt=1,
-                generator=generator
-            ).images[0]
-            logger.info(f"✅ 배경 이미지 생성 완료")
-
-            name_without_ext, _ = os.path.splitext(filename)
-            save_path = f"backend/data/output/{name_without_ext}.png"
-            image.save(save_path)
-            logger.info(f"✅ 배경 이미지가 {save_path}에 생성되었습니다.")
-            return image, save_path
-        except Exception as e:
-            logger.error(f"❌ 텍스트-이미지 생성 중 오류 발생: {e}")
             return None
 
 
