@@ -2,13 +2,15 @@ import os
 import yaml
 from datetime import datetime, timedelta, timezone
 from utils.logger import get_logger
-from backend.text_generator.core.text_generator import generate_html
+from backend.text_generator.text_generator import generate_html
 
 logger = get_logger(__name__)
 
 
-def text_generator_main(config):
-    product = config["input"]
+def text_generator_main(product: dict, differences: list[str], output_path: str):
+    if differences:
+        product["differences"] = differences
+    
     result = generate_html(product)
     
     logger.debug(f"🛠️ 파일명 생성 시작")
@@ -16,9 +18,7 @@ def text_generator_main(config):
     session_id = datetime.now(KST).strftime("%Y%m%d_%H%M%S_%f")[:-3]
     filename = f"draft_{session_id}.html"
 
-    output_path = config["data"]["output_path"]
     os.makedirs(output_path, exist_ok=True)
-    
     full_output_path = os.path.join(output_path, filename)
 
     try:
