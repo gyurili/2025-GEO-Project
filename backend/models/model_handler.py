@@ -227,7 +227,7 @@ def get_model_pipeline(
 
 def get_vton_pipeline(
     pipeline_model: str = "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
-    vae_model: str = "madebyollin/sdxl-vae-fp16-fix",
+    # vae_model: str = "madebyollin/sdxl-vae-fp16-fix",
     controlnet_model: str = "diffusers/controlnet-depth-sdxl-1.0",
     ip_adapter_config: dict = {
         "repo_id": "h94/IP-Adapter",
@@ -246,7 +246,7 @@ def get_vton_pipeline(
 
     Args:
         pipeline_model (str): Inpainting 파이프라인 모델 ID
-        vae_model (str): VAE 모델 ID
+        # vae_model (str): VAE 모델 ID
         controlnet_model (str): ControlNet 모델 ID
         ip_adapter_config (dict): IP-Adapter 설정 {repo_id, subfolder, weight_name, scale}
         lora_config (dict): LoRA 설정 {repo_id, weight_name}
@@ -260,19 +260,19 @@ def get_vton_pipeline(
     # 다운로드
     logger.debug("🛠️ 파이프라인 다운로드 시작")
     pipeline_path = download_model(pipeline_model, model_type="diffusion_pipeline")
-    vae_path = download_model(vae_model, model_type="vae")
+    # vae_path = download_model(vae_model, model_type="vae")
     controlnet_path = download_model(controlnet_model, model_type="controlnet")
 
-    if not all([pipeline_path, vae_path, controlnet_path]):
+    if not all([pipeline_path, controlnet_path]): # vae_path
         logger.error("❌ 다운로드 실패: 하나 이상의 모델이 준비되지 않음")
         return None
 
     # 로드
     logger.debug("🛠️ 파이프라인 로드 시작")
-    vae = AutoencoderKL.from_pretrained(vae_path, torch_dtype=torch.float16)
+    # vae = AutoencoderKL.from_pretrained(vae_path, torch_dtype=torch.float16)
     pipeline = AutoPipelineForInpainting.from_pretrained(
         pipeline_path,
-        vae=vae,
+        # vae=vae,
         torch_dtype=torch.float16,
         use_safetensors=True
     ).to("cuda")

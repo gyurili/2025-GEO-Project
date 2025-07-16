@@ -167,7 +167,7 @@ class BackgroundHandler:
             mask.save(save_path)
 
             logger.info(f"✅ 마스크 이미지 생성 완료: {save_path}")
-            return mask
+            return mask, save_path
 
         except Exception as e:
             logger.error(f"❌ 마스크 생성 중 오류 발생: {e}")

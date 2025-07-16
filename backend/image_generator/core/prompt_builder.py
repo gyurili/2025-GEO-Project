@@ -141,3 +141,51 @@ def generate_prompts(product: dict, mode: str = "background") -> dict:
         "background_prompt": prompt,
         "negative_prompt": neg_prompt
     }
+
+
+def classify_product(product: dict) -> str | None:
+    """
+    OpenAI 모델을 사용하여 제품을 상의/하의/세트/신발/장갑/모자 중 하나로 분류합니다.
+
+    Args:
+        product (dict): 제품 정보 (예: {"name": "스트라이프 셔츠", "category": "패션", "price": 30000, "brand": "ABC", "features": "면소재, 여름용"})
+
+    Returns:
+        str: 분류 결과 ("상의", "하의", "세트", "신발", "장갑", "모자") 중 하나
+    """
+    try:
+        system_prompt = (
+            "당신은 패션 카테고리 분류 전문가입니다.\n\n"
+            "주어진 제품 정보를 읽고, 다음 중 하나로만 답하세요:\n"
+            "- 상의\n- 하의\n- 세트\n- 신발\n- 장갑\n- 모자\n\n"
+            "규칙:\n"
+            "- 반드시 정확히 위 6개 단어 중 하나로만 출력\n"
+            "- 다른 설명이나 문장은 절대 추가하지 마세요\n"
+            "- 모르면 가장 관련성이 높은 것으로 추정하세요"
+        )
+
+        user_prompt = f"""
+        상품 정보:
+        - 상품명: {product['name']}
+        - 카테고리: {product['category']}
+        - 가격: {product['price']}원
+        - 브랜드: {product['brand']}
+        - 특징: {product['features']}
+        """
+
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0,
+        )
+
+        result = response.choices[0].message.content.strip()
+        logger.info(f"✅ 제품 분류 결과: {result}")
+        return result
+
+    except Exception as e:
+        logger.error(f"❌ 제품 분류 실패: {e}")
+        return None
