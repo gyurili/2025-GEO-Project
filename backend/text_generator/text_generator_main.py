@@ -2,7 +2,7 @@ import os
 import yaml
 from datetime import datetime, timedelta, timezone
 from utils.logger import get_logger
-from backend.text_generator.core.text_generator import generate_html
+from backend.text_generator.text_generator import generate_html
 
 logger = get_logger(__name__)
 
