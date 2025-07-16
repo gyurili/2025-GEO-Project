@@ -3,7 +3,7 @@ import sys
 import yaml
 import imgkit
 from utils.logger import get_logger
-from backend.page_generator.core.apply_template import apply_css_template
+from backend.page_generator.apply_template import apply_css_template
 
 logger = get_logger(__name__)
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
