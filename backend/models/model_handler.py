@@ -246,7 +246,7 @@ def get_vton_pipeline(
 
     Args:
         pipeline_model (str): Inpainting 파이프라인 모델 ID
-        # vae_model (str): VAE 모델 ID
+        vae_model (str): VAE 모델 ID
         controlnet_model (str): ControlNet 모델 ID
         ip_adapter_config (dict): IP-Adapter 설정 {repo_id, subfolder, weight_name, scale}
         lora_config (dict): LoRA 설정 {repo_id, weight_name}
