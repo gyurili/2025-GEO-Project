@@ -21,7 +21,7 @@ def generate_html(product: dict) -> dict:
     Returns:
         dict: 생성된 상세페이지 HTML이 포함된 딕셔너리
     """
-    prompt = "\n".join([
+    prompt_parts = [
         apply_schema_prompt(product),
         natural_tone_prompt(),
         keyword_variation_prompt(),
@@ -32,9 +32,22 @@ def generate_html(product: dict) -> dict:
         fluent_prompt(),
         expand_product_details(),
         css_friendly_prompt(),
+    ]
+
+    if product.get("differences"):
+        diff_prompt = "\n".join([
+            "이 상품은 다음과 같은 차별점을 가지고 있습니다:",
+            *[f"- {item}" for item in product["differences"]],
+            "위 차별점들을 상세페이지 내용에서 자연스럽게 강조해 주세요."
+        ])
+        prompt_parts.insert(1, diff_prompt)
+    
+    prompt_parts += [
         "모든 정보를 HTML로 출력해주세요. 제공된 정보를 바탕으로 상세페이지를 풍성하고 길게 만들어주세요.",
-        "결과는 <html> ~ </html> 태그 안에 있어야 합니다",
-    ])
+        "결과는 <html> ~ </html> 태그 안에 있어야 합니다"
+    ]
+    
+    prompt = "\n".join(prompt_parts)
     logger.info("🛠️ OpenAI 요청 시작")
 
     response = client.chat.completions.create(
