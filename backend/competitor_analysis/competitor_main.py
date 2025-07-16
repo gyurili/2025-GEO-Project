@@ -1,7 +1,7 @@
 import asyncio
-from backend.competitor_analysis.core.differentiator import generate_differentiators
-from backend.competitor_analysis.core.competitor_db import get_latest_review_summary
-from backend.competitor_analysis.core.crawl_signal_server import send_crawl_request_signal
+from backend.competitor_analysis.differentiator import generate_differentiators
+from backend.competitor_analysis.competitor_db import get_latest_review_summary
+from backend.competitor_analysis.crawl_signal_server import send_crawl_request_signal
 from utils.config import get_openai_api_key, get_db_config
 from utils.logger import get_logger
 
