@@ -3,10 +3,10 @@ import time
 from datetime import datetime
 import pymysql
 
-from backend.competitor_analysis.core.crawler import crawl_reviews_by_category
-from backend.competitor_analysis.core.differentiator import summarize_competitor_reviews
-from backend.competitor_analysis.core.competitor_db import insert_review_summary
-from backend.competitor_analysis.core.crawl_signal_server import poll_and_process_signal
+from backend.competitor_analysis.crawler import crawl_reviews_by_category
+from backend.competitor_analysis.differentiator import summarize_competitor_reviews
+from backend.competitor_analysis.competitor_db import insert_review_summary
+from backend.competitor_analysis.crawl_signal_server import poll_and_process_signal
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
