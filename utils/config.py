@@ -43,23 +43,37 @@ def load_config() -> dict:
 
 def get_db_config() -> dict:
     """
-    DB 접속 정보를 config.yaml에서 읽어오고, 패스워드는 .env에서 보강해서 반환합니다.
+    DB 접속 정보를 config.yaml에서 읽어오고,
+    패스워드와 호스트는 .env 값이 있으면 우선 적용해서 반환합니다.
 
     Returns:
         dict: DB 접속 정보 (host, user, password, db 등)
     """
     logger.debug("🛠️ DB 접속 설정 불러오기 시작")
     cfg = load_config().get("db_config", {})
-    # .env에서 password를 보강
+
+    # .env에서 host 보강
+    host_from_env = os.environ.get("DB_HOST")
+    if "host" in cfg:
+        if host_from_env:
+            cfg["host"] = host_from_env
+            logger.info("✅ DB 호스트를 .env에서 성공적으로 불러옴")
+        else:
+            logger.warning("⚠️ .env에 DB_HOST가 존재하지 않아 config.yaml의 값 사용")
+    else:
+        logger.warning("⚠️ config.yaml의 db_config에 host 필드 없음")
+
+    # .env에서 password 보강
     pwd_from_env = os.environ.get("DB_PASSWORD")
     if "password" in cfg:
         if pwd_from_env:
             cfg["password"] = pwd_from_env
-            logger.info("✅ DB 패스워드 .env에서 성공적으로 불러옴")
+            logger.info("✅ DB 패스워드를 .env에서 성공적으로 불러옴")
         else:
             logger.warning("⚠️ .env에 DB_PASSWORD가 존재하지 않아 config.yaml의 값 사용")
     else:
         logger.warning("⚠️ config.yaml의 db_config에 password 필드 없음")
+
     return cfg
 
 
