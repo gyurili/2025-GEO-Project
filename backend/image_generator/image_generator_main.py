@@ -23,7 +23,7 @@ def image_generator_main(
     product: dict,
     image_path: str, 
     prompt_mode: str = "human",
-    model_id: str = "SG161222/RealVisXL_V5.0",  # "diffusers/controlnet-depth-sdxl-1.0"
+    model_id: str = "SG161222/RealVisXL_V4.0",
     model_type: str = "diffusion_text2img",
     ip_adapter_scale: float = 0.5,
     num_inference_steps: int = 99,
@@ -54,7 +54,7 @@ def image_generator_main(
         product (dict): 상품명, 카테고리, 특징 등 제품 정보.
         image_path (str): 입력 이미지 경로.
         prompt_mode (str): 프롬프트 생성 모드 (기본값: "human").
-        model_id (str): 모델 식별자 (기본값: "SG161222/RealVisXL_V5.0").
+        model_id (str): 모델 식별자 (기본값: "SG161222/RealVisXL_V4.0").
         model_type (str): 모델 타입 (예: "diffusion_text2img").
         ip_adapter_scale (float): IP-Adapter 적용 강도 (0.0~1.0).
         num_inference_steps (int): 이미지 생성 시 inference 스텝 수.
@@ -211,14 +211,14 @@ def vton_generator_main(
     # 3. VTON 파이프라인 로드
     logger.debug("🛠️ vton 파이프라인 불러오기 시작")
     pipeline = get_vton_pipeline(
-        pipeline_model="SG161222/RealVisXL_V5.0",
-        # vae_model="madebyollin/sdxl-vae-fp16-fix",
+        pipeline_model="diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+        vae_model="madebyollin/sdxl-vae-fp16-fix",
         controlnet_model="diffusers/controlnet-depth-sdxl-1.0",
         ip_adapter_config={
             "repo_id": "h94/IP-Adapter",
             "subfolder": "sdxl_models",
             "weight_name": "ip-adapter_sdxl.bin",
-            "scale": 2.0
+            "scale": 0.75
         },
         lora_config={
             "repo_id": "Norod78/weird-fashion-show-outfits-sdxl-lora",
