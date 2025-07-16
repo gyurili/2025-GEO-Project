@@ -156,27 +156,35 @@ def vton_generator_main(
     mask_image_path:str,
 ):
     """
-    Virtual Try-On(VTON) 기능을 통해 모델 이미지에 의류를 합성합니다.
+    Virtual Try-On (VTON) 기능을 통해 모델 이미지에 의류를 합성합니다.
 
-    주요 단계:
-    1. IP 이미지 로드:
-       - ip_image_path에서 모델 이미지를 로드.
+    이 함수는 다음 단계를 수행합니다:
+    1. 의류 이미지 로드:
+        - ip_image_path에서 의류 이미지를 불러옵니다.
     2. 배경 제거:
-       - 모델 이미지의 배경 제거 후 가공.
-    3. VTON 실행:
-       - run_virtual_tryon() 함수를 호출하여 의류 이미지와 모델 이미지를 합성.
-       - ControlNet 기반으로 자연스러운 착용 이미지 생성.
-    4. 결과 저장:
-       - 생성된 이미지를 `backend/data/output/`에 PNG 형식으로 저장.
+        - 의류 이미지의 배경을 제거하여 합성에 적합한 형태로 만듭니다.
+    3. VTON 파이프라인 준비:
+        - get_vton_pipeline()을 사용하여 Stable Diffusion 기반 파이프라인을 구성합니다.
+        - IP-Adapter 및 LoRA 모델이 주입됩니다.
+    4. 합성 실행:
+        - run_virtual_tryon()을 호출하여 모델 이미지와 의류 이미지를 합성합니다.
+        - ControlNet 기반으로 자연스러운 합성 이미지를 생성합니다.
+    5. 결과 저장:
+        - 생성된 이미지를 `backend/data/output/`에 PNG 형식으로 저장합니다.
 
     Args:
-        model_image_path (str): 모델 이미지 경로.
-        ip_image_path (str): 의류 이미지 경로.
-        mask_image_path (str): 마스크 이미지 경로 (모델 영역).
+        model_image_path (str): 모델(사람) 이미지의 파일 경로.
+        ip_image_path (str): 의류 이미지 파일 경로.
+        mask_image_path (str): 합성할 영역의 마스크 이미지 경로.
 
     Returns:
-        dict: 생성된 착용 이미지(`PIL.Image`)와 저장 경로.
+        dict: {
+            "image": PIL.Image,  # 생성된 합성 이미지
+            "image_path": str    # 저장된 이미지 파일 경로
+        }
+        처리 실패 시 False 반환.
     """
+    # 1. 의류 이미지 로드
     logger.debug(f"🛠️ 이미지 로드 시작")
     image_loader = ImageLoader()
     loaded_image, filename = image_loader.load_image(image_path=ip_image_path, target_size=None)
@@ -200,6 +208,7 @@ def vton_generator_main(
         return False
     logger.info(f"✅ 배경 제거 완료 → 임시 저장 경로: {removed_bg_path}")
 
+    # 3. VTON 파이프라인 로드
     logger.debug("🛠️ vton 파이프라인 불러오기 시작")
     pipeline = get_vton_pipeline(
         pipeline_model="diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
@@ -218,6 +227,7 @@ def vton_generator_main(
     )
     logger.info("✅ vton 파이프라인 불러오기 완료")
 
+    # 4. VTON 실행
     logger.debug("🛠️ vton 실행 시작")
     try:
         result_image = run_virtual_tryon(
@@ -238,6 +248,7 @@ def vton_generator_main(
         logger.error(f"❌ VTON 처리 중 오류 발생: {e}")
         return False
 
+    # 5. 결과 저장
     name_without_ext, _ = os.path.splitext(filename)
     save_path = f"backend/data/output/{name_without_ext}_vton.png"
     result_image.save(save_path)

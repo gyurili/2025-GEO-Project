@@ -134,6 +134,37 @@ def get_model_pipeline(
         use_ip_adapter: bool = True,
         ip_adapter_config: dict = None,
     ):
+    """
+    Hugging Face 모델을 다운로드 및 로드하여 파이프라인 객체를 반환합니다.
+    필요한 경우 IP-Adapter를 자동으로 주입합니다.
+
+    이 함수는 다음을 수행합니다:
+    1. download_model()을 사용해 지정된 모델을 다운로드합니다.
+    2. load_model()을 통해 로컬 모델 디렉토리에서 모델을 로드합니다.
+    3. 옵션에 따라 IP-Adapter를 주입하여 모델 기능을 확장합니다.
+
+    Args:
+        model_id (str): Hugging Face 모델 ID (예: "stabilityai/stable-diffusion-xl-base-1.0").
+        model_type (str, optional): 모델 유형. 기본값은 "diffusion_text2img".
+            - 지원되는 값: "diffusion_text2img", "diffusion_pipeline", "vae", "controlnet" 등.
+        use_ip_adapter (bool, optional): True일 경우 IP-Adapter를 로드하고 주입합니다. 기본값은 True.
+        ip_adapter_config (dict, optional): IP-Adapter 설정 값.
+            - 예시:
+                {
+                    "repo_id": "h94/IP-Adapter",
+                    "subfolder": "sdxl_models",
+                    "weight_name": "ip-adapter_sdxl.bin",
+                    "scale": 0.8
+                }
+
+    Returns:
+        model_pipeline (object): 로드된 모델 파이프라인 객체.
+            - IP-Adapter가 활성화된 경우, image_proj_model 속성을 포함.
+        None: 모델 다운로드 또는 로드 실패 시 None 반환.
+
+    Raises:
+        Exception: IP-Adapter 로딩 중 발생한 예외는 warning으로 로깅됩니다.
+    """    
     model_path = download_model(model_id, model_type)
     if model_path is None:
         logger.error("❌ 모델 경로가 None입니다. 로딩을 중단합니다.")
