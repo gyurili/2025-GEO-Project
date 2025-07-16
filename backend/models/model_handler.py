@@ -1,9 +1,15 @@
 import os
 import torch
 from dotenv import load_dotenv
-from diffusers import DiffusionPipeline, AutoPipelineForText2Image
-from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
-from huggingface_hub import snapshot_download
+from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+from diffusers import (
+    AutoPipelineForInpainting,
+    AutoPipelineForText2Image,
+    ControlNetModel,
+    StableDiffusionPipeline,
+    AutoencoderKL
+)
+from peft import PeftModel
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -11,15 +17,19 @@ logger = get_logger(__name__)
 load_dotenv()
 
 MODEL_LOADERS = {
-    "diffusion": AutoPipelineForText2Image,
+    "diffusion_pipeline": AutoPipelineForInpainting,
+    "diffusion_text2img": AutoPipelineForText2Image,
+    "vae": AutoencoderKL,
+    "controlnet": ControlNetModel,
     "casual_lm": AutoModelForCausalLM,
     "encoder": AutoModel,
 }
 
 def download_model(
         model_id: str, 
-        model_type: str = "diffusion",
-        save_dir: str = "/home/user/2025-GEO-Project/backend/models"
+        model_type: str = "diffusion_text2img",
+        save_dir: str = "/home/user/2025-GEO-Project/backend/models",
+        use_4bit: bool = False
     ):
     """
     Hugging Face에서 모델을 다운로드하여 지정된 경로에 저장
@@ -28,7 +38,7 @@ def download_model(
 
     Args:
         model_id (str): Hugging Face 모델 ID (예: "stabilityai/stable-diffusion-xl-base-1.0").
-        model_type (str): 모델 유형 (예: "diffusion", "causal_lm", "encoder" 등).
+        model_type (str): 모델 유형 (예: "diffusion_text2img", "causal_lm", "encoder" 등).
         save_dir (str, optional): 모델을 저장할 기본 디렉토리 경로.
                                   기본값은 "/home/user/2025-GEO-Project/backend/models".
 
@@ -60,16 +70,18 @@ def download_model(
     else: 
         load_kwargs["torch_dtype"] = torch.float32
         logger.info("✅ CPU를 사용하여 모델을 다운로드")
-
-    if model_type == "diffusion":
-        pass
-    else:
-        load_kwargs["device_map"] = "auto"
+        
+    if model_type == "casual_lm" and use_4bit:
+        load_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16
+        )
 
     try:
         loader_cls = MODEL_LOADERS[model_type]
         model = loader_cls.from_pretrained(model_id, token=token, **load_kwargs)
-
         model.save_pretrained(model_save_path)
         logger.info(f"✅ 모델 '{model_id}'이(가) '{model_save_path}'에 저장")
         return model_save_path
@@ -81,14 +93,15 @@ def download_model(
 
 def load_model(
         model_path: str,
-        model_type: str = "diffusion"
+        model_type: str = "diffusion_text2img",
+        use_4bit: bool = False
     ):
     """
     저장된 모델 디렉토리에서 모델을 불러옵니다.
 
     Args:
         model_path (str): 사전에 저장된 모델 디렉토리 경로
-        model_type (str): 모델 유형 ("diffusion", "causal_lm", "encoder" 등)
+        model_type (str): 모델 유형 ("diffusion_text2img", "causal_lm", "encoder" 등)
 
     Returns:
         model: 로드된 모델 객체. 실패 시 None 반환
@@ -109,8 +122,17 @@ def load_model(
         load_kwargs["torch_dtype"] = torch.float32
         logger.info("✅ CPU를 사용하여 모델을 로드")
 
-    if model_type == "diffusion":
+    if model_type == "diffusion_text2img" or model_type == "diffusion_pipeline":
         load_kwargs["device_map"] = "balanced"
+    elif model_type == "controlnet":
+        load_kwargs["device_map"] = "cuda"
+    elif model_type == "casual_lm" and use_4bit:
+        load_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16
+        )
     else:
         load_kwargs["device_map"] = "auto"
 
@@ -125,16 +147,61 @@ def load_model(
 
 def get_model_pipeline(
         model_id: str,
-        model_type: str = "diffusion",
+        model_type: str = "diffusion_text2img",
         use_ip_adapter: bool = True,
         ip_adapter_config: dict = None,
+        lora_path: str = None,
+        use_4bit: bool = False,
+        save_dir: str = "/home/user/2025-GEO-Project/backend/models"
     ):
-    model_path = download_model(model_id, model_type)
+    """
+    Hugging Face 모델을 다운로드 및 로드하여 파이프라인 객체를 반환합니다.
+    필요한 경우 IP-Adapter를 자동으로 주입합니다.
+
+    이 함수는 다음을 수행합니다:
+    1. download_model()을 사용해 지정된 모델을 다운로드합니다.
+    2. load_model()을 통해 로컬 모델 디렉토리에서 모델을 로드합니다.
+    3. 옵션에 따라 IP-Adapter를 주입하여 모델 기능을 확장합니다.
+
+    Args:
+        model_id (str): Hugging Face 모델 ID (예: "stabilityai/stable-diffusion-xl-base-1.0").
+        model_type (str, optional): 모델 유형. 기본값은 "diffusion_text2img".
+            - 지원되는 값: "diffusion_text2img", "diffusion_pipeline", "vae", "controlnet" 등.
+        use_ip_adapter (bool, optional): True일 경우 IP-Adapter를 로드하고 주입합니다. 기본값은 True.
+        ip_adapter_config (dict, optional): IP-Adapter 설정 값.
+            - 예시:
+                {
+                    "repo_id": "h94/IP-Adapter",
+                    "subfolder": "sdxl_models",
+                    "weight_name": "ip-adapter_sdxl.bin",
+                    "scale": 0.8
+                }
+
+    Returns:
+        model_pipeline (object): 로드된 모델 파이프라인 객체.
+            - IP-Adapter가 활성화된 경우, image_proj_model 속성을 포함.
+        None: 모델 다운로드 또는 로드 실패 시 None 반환.
+
+    Raises:
+        Exception: IP-Adapter 로딩 중 발생한 예외는 warning으로 로깅됩니다.
+    """    
+    model_path = download_model(model_id=model_id, model_type=model_type, save_dir=save_dir, use_4bit=use_4bit)
+    
     if model_path is None:
         logger.error("❌ 모델 경로가 None입니다. 로딩을 중단합니다.")
         return None
 
-    model_pipeline = load_model(model_path, model_type)
+    model_pipeline = load_model(model_path=model_path, model_type=model_type, use_4bit=use_4bit)
+
+    # LoRA 어댑터 연결
+    if lora_path and model_type == "casual_lm":
+        try:
+            model_pipeline = PeftModel.from_pretrained(model_pipeline, lora_path, local_files_only=True)
+            model_pipeline.eval()
+            logger.info(f"✅ LLM용 LoRA 어댑터 적용 완료: {lora_path}")
+        except Exception as e:
+            logger.error(f"❌ LoRA 어댑터 로딩 실패: {e}")
+            return None
 
     # IP-Adapter 주입 (옵션)
     if use_ip_adapter and not hasattr(model_pipeline, "image_proj_model"):

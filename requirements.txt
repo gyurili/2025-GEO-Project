@@ -6,7 +6,14 @@ pyyaml
 python-dotenv
 # sudo apt install wkhtmltopdf
 # sudo apt install fonts-noto-cjk
+# sudo apt install build-essential
+# sudo apt install python3.10-dev
 imgkit
+torch
+transformers
+diffusers
+peft
+bitsandbytes
 
 # 이학진
 pymysql
