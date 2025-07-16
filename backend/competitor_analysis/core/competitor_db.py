@@ -15,18 +15,7 @@ def insert_review_summary(
 ):
     """
     경쟁사 리뷰 요약본을 MySQL DB에 저장합니다.
-
-    Args:
-        host (str): DB 호스트 주소(IP 또는 도메인)
-        user (str): DB 사용자명
-        password (str): DB 비밀번호
-        db (str): 데이터베이스 이름
-        category (str): 상품 카테고리명
-        review_summary (str): 요약된 리뷰 내용(문자열)
-        num_reviews (int): 크롤링된 리뷰 개수
-
-    Returns:
-        None
+    이미 동일 카테고리가 있다면 UPDATE (요약/개수/시간 갱신), 없으면 INSERT.
     """
     logger.debug(f"🛠️ 리뷰 요약본 저장 시작: category={category}, num_reviews={num_reviews}")
     crawled_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -43,6 +32,10 @@ def insert_review_summary(
             sql = """
             INSERT INTO competitor_review_summary (category, review_summary, num_reviews, crawled_at)
             VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                review_summary = VALUES(review_summary),
+                num_reviews = VALUES(num_reviews),
+                crawled_at = VALUES(crawled_at)
             """
             cur.execute(sql, (category, review_summary, num_reviews, crawled_at))
         conn.commit()
