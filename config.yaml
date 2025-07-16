@@ -20,4 +20,4 @@ input:
   features: "인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감"
   image_path: "backend/data/input/greendress.jpg"
   css_type: 1 # 1 or 2
-  engine: "hf" # "openai" or "hf"
+  engine: "openai" # "openai" or "hf"
