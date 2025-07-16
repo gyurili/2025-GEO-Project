@@ -218,7 +218,7 @@ def vton_generator_main(
             "repo_id": "h94/IP-Adapter",
             "subfolder": "sdxl_models",
             "weight_name": "ip-adapter_sdxl.bin",
-            "scale": 1.0
+            "scale": 0.75
         },
         lora_config={
             "repo_id": "Norod78/weird-fashion-show-outfits-sdxl-lora",
@@ -235,8 +235,15 @@ def vton_generator_main(
             model_image_path=model_image_path,
             ip_image_path=removed_bg_path,
             mask_image_path=mask_image_path,
-            prompt="photorealistic, perfect body, beautiful skin, realistic skin, natural skin",
-            negative_prompt="ugly, bad quality, bad anatomy, deformed body, deformed hands, deformed feet, deformed face, deformed clothing, deformed skin, bad skin, leggings, tights, stockings, flat clothing, blurry textures, unnatural fabric, poor lighting",
+            prompt=(
+                "A full-body photo of the model wearing the selected clothing item. "
+                "Preserve the exact design, fabric texture, material shine, seams, and colors of the clothing. "
+                "Ensure natural fit and realistic lighting."
+            ),
+            negative_prompt=(
+                "blurry, unrealistic, distorted body, misaligned clothing, missing fabric details, flat colors, "
+                "incorrect texture, artifacts, bad anatomy, deformed hands, deformed face"
+            ),
             width=512,
             height=768,
             controlnet_conditioning_scale=0.7,
