@@ -228,6 +228,9 @@ downloads/
 output/
 result/
 /local_models/
+Gukbap-Qwen2.5-7B/
+adapter/
+
 
 # LSP config files
 pyrightconfig.json

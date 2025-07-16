@@ -1,7 +1,7 @@
 import os
 import torch
 from dotenv import load_dotenv
-from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from diffusers import (
     AutoPipelineForInpainting,
     AutoPipelineForText2Image,
@@ -9,7 +9,7 @@ from diffusers import (
     StableDiffusionPipeline,
     AutoencoderKL
 )
-
+from peft import PeftModel
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -28,7 +28,8 @@ MODEL_LOADERS = {
 def download_model(
         model_id: str, 
         model_type: str = "diffusion_text2img",
-        save_dir: str = "/home/user/2025-GEO-Project/backend/models"
+        save_dir: str = "/home/user/2025-GEO-Project/backend/models",
+        use_4bit: bool = False
     ):
     """
     Hugging Face에서 모델을 다운로드하여 지정된 경로에 저장
@@ -69,6 +70,14 @@ def download_model(
     else: 
         load_kwargs["torch_dtype"] = torch.float32
         logger.info("✅ CPU를 사용하여 모델을 다운로드")
+        
+    if model_type == "casual_lm" and use_4bit:
+        load_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16
+        )
 
     try:
         loader_cls = MODEL_LOADERS[model_type]
@@ -84,7 +93,8 @@ def download_model(
 
 def load_model(
         model_path: str,
-        model_type: str = "diffusion_text2img"
+        model_type: str = "diffusion_text2img",
+        use_4bit: bool = False
     ):
     """
     저장된 모델 디렉토리에서 모델을 불러옵니다.
@@ -116,6 +126,13 @@ def load_model(
         load_kwargs["device_map"] = "balanced"
     elif model_type == "controlnet":
         load_kwargs["device_map"] = "cuda"
+    elif model_type == "casual_lm" and use_4bit:
+        load_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.float16
+        )
     else:
         load_kwargs["device_map"] = "auto"
 
@@ -133,6 +150,9 @@ def get_model_pipeline(
         model_type: str = "diffusion_text2img",
         use_ip_adapter: bool = True,
         ip_adapter_config: dict = None,
+        lora_path: str = None,
+        use_4bit: bool = False,
+        save_dir: str = "/home/user/2025-GEO-Project/backend/models"
     ):
     """
     Hugging Face 모델을 다운로드 및 로드하여 파이프라인 객체를 반환합니다.
@@ -165,12 +185,23 @@ def get_model_pipeline(
     Raises:
         Exception: IP-Adapter 로딩 중 발생한 예외는 warning으로 로깅됩니다.
     """    
-    model_path = download_model(model_id, model_type)
+    model_path = download_model(model_id=model_id, model_type=model_type, save_dir=save_dir, use_4bit=use_4bit)
+    
     if model_path is None:
         logger.error("❌ 모델 경로가 None입니다. 로딩을 중단합니다.")
         return None
 
-    model_pipeline = load_model(model_path, model_type)
+    model_pipeline = load_model(model_path=model_path, model_type=model_type, use_4bit=use_4bit)
+
+    # LoRA 어댑터 연결
+    if lora_path and model_type == "casual_lm":
+        try:
+            model_pipeline = PeftModel.from_pretrained(model_pipeline, lora_path, local_files_only=True)
+            model_pipeline.eval()
+            logger.info(f"✅ LLM용 LoRA 어댑터 적용 완료: {lora_path}")
+        except Exception as e:
+            logger.error(f"❌ LoRA 어댑터 로딩 실패: {e}")
+            return None
 
     # IP-Adapter 주입 (옵션)
     if use_ip_adapter and not hasattr(model_pipeline, "image_proj_model"):

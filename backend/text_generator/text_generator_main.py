@@ -2,7 +2,7 @@ import os
 import yaml
 from datetime import datetime, timedelta, timezone
 from utils.logger import get_logger
-from backend.text_generator.text_generator import generate_html
+from backend.text_generator.text_generator import generate_openai, generate_hf
 
 logger = get_logger(__name__)
 
@@ -11,7 +11,11 @@ def text_generator_main(product: dict, differences: list[str], output_path: str)
     if differences:
         product["differences"] = differences
     
-    result = generate_html(product)
+    engine = product.get("engine", "openai")
+    if engine == "openai":
+        result = generate_openai(product)
+    else:
+        result = generate_hf(product)
     
     logger.debug(f"🛠️ 파일명 생성 시작")
     KST = timezone(timedelta(hours=9))
