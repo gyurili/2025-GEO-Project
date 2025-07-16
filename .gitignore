@@ -228,8 +228,9 @@ downloads/
 output/
 result/
 /local_models/
+backend/models/adapter/*
+!backend/models/adapter/.gitkeep
 Gukbap-Qwen2.5-7B/
-adapter/
 
 
 # LSP config files
