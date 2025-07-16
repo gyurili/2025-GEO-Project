@@ -10,7 +10,7 @@ from .core.image_loader import ImageLoader
 from .core.background_handler import BackgroundHandler, Img2ImgGenerator
 from .core.prompt_builder import generate_prompts
 from .core.virtual_try_on import run_virtual_tryon
-from backend.models.model_handler import get_model_pipeline
+from backend.models.model_handler import get_model_pipeline, get_vton_pipeline
 
 '''
 TODO: 상품명, 카테고리, 특징, 이미지패스, 상품링크, 차별점을 바탕으로 이미지 재구성
@@ -24,7 +24,7 @@ def image_generator_main(
     image_path: str, 
     prompt_mode: str = "human",
     model_id: str = "SG161222/RealVisXL_V4.0",
-    model_type: str = "diffusion",
+    model_type: str = "diffusion_text2img",
     ip_adapter_scale: float = 0.5,
     num_inference_steps: int = 99,
     guidance_scale: float = 7.5,
@@ -55,7 +55,7 @@ def image_generator_main(
         image_path (str): 입력 이미지 경로.
         prompt_mode (str): 프롬프트 생성 모드 (기본값: "human").
         model_id (str): 모델 식별자 (기본값: "SG161222/RealVisXL_V4.0").
-        model_type (str): 모델 타입 (예: "diffusion").
+        model_type (str): 모델 타입 (예: "diffusion_text2img").
         ip_adapter_scale (float): IP-Adapter 적용 강도 (0.0~1.0).
         num_inference_steps (int): 이미지 생성 시 inference 스텝 수.
         guidance_scale (float): CFG 스케일 (프롬프트 준수 정도).
@@ -200,15 +200,33 @@ def vton_generator_main(
         return False
     logger.info(f"✅ 배경 제거 완료 → 임시 저장 경로: {removed_bg_path}")
 
+    logger.debug("🛠️ vton 파이프라인 불러오기 시작")
+    pipeline = get_vton_pipeline(
+        pipeline_model="diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+        vae_model="madebyollin/sdxl-vae-fp16-fix",
+        controlnet_model="diffusers/controlnet-depth-sdxl-1.0",
+        ip_adapter_config={
+            "repo_id": "h94/IP-Adapter",
+            "subfolder": "sdxl_models",
+            "weight_name": "ip-adapter_sdxl.bin",
+            "scale": 1.0
+        },
+        lora_config={
+            "repo_id": "Norod78/weird-fashion-show-outfits-sdxl-lora",
+            "weight_name": "sdxl-WeirdOutfit-Dreambooh.safetensors"
+        },
+    )
+    logger.info("✅ vton 파이프라인 불러오기 완료")
+
     logger.debug("🛠️ vton 실행 시작")
     try:
         result_image = run_virtual_tryon(
+            pipeline=pipeline,
             model_image_path=model_image_path,
             ip_image_path=removed_bg_path,
             mask_image_path=mask_image_path,
             prompt="photorealistic, perfect body, beautiful skin, realistic skin, natural skin",
             negative_prompt="ugly, bad quality, bad anatomy, deformed body, deformed hands, deformed feet, deformed face, deformed clothing, deformed skin, bad skin, leggings, tights, stockings, flat clothing, blurry textures, unnatural fabric, poor lighting",
-            ip_adapter_scale=1.0,
             width=512,
             height=768,
             controlnet_conditioning_scale=0.7,
