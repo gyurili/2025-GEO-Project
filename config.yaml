@@ -5,13 +5,11 @@ data:
   output_path: /home/ubuntu/2025-GEO-Project/backend/data/output
   result_path: /home/ubuntu/2025-GEO-Project/backend/data/result
 input:
-  name: 한성컴퓨터
-  category: 컴퓨터
+  name: 청바지
+  category: 의류
   price: 2000
-  brand: 한성
+  brand: 보세
   features: 최고
   css_type: 1
   image_path:
-  - backend/data/input/product_875fa485b76e4d839775d518cc90dc6f_0.jpg
-  - backend/data/input/product_a8d8b4e66c7b40a484ce5af6987fff07_1.jpg
-  - backend/data/input/product_2b11219fa3974c8e9f95cf1ad90fd894_2.jpg
+  - backend/data/input/product_ba668b87ce5044c188d18b6eb7526dbb_0.jpg

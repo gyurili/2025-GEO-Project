@@ -224,14 +224,6 @@ def check_server_status():
             logger.info("✅ 서버 연결 상태 확인 완료 - 연결됨")
         else:
             logger.warning("⚠️ 서버 연결 상태 확인 완료 - 연결 안됨")
-    
-    if st.session_state.server_connected:
-        st.success("✅ 백엔드 서버 연결됨")
-        logger.debug("🛠️ UI에 서버 연결 성공 표시")
-    else:
-        st.error("❌ 백엔드 서버 연결 실패")
-        st.info("💡 run.py를 실행하여 백엔드 서버를 시작해주세요.")
-        logger.debug("🛠️ UI에 서버 연결 실패 표시")
 
 def main():
     logger.debug("🛠️ Streamlit 메인 함수 시작")
@@ -419,29 +411,6 @@ def main():
             else:
                 logger.error("❌ 상품 정보 처리 실패")
                 st.error("❌ 상품 정보 처리에 실패했습니다.")
-    
-    # 처리 결과 표시
-    if st.session_state.processed_data:
-        logger.debug("🛠️ 처리 결과 표시 시작")
-        st.markdown("---")
-        display_product_summary(st.session_state.processed_data)
-        
-        # JSON 데이터 표시
-        with st.expander("🔍 상세 JSON 데이터 보기"):
-            st.json(st.session_state.processed_data)
-        
-        # 설정 파일 상태
-        if st.session_state.config_created:
-            st.success("📁 config.yaml 파일이 생성되었습니다.")
-            
-            # 다운로드 버튼
-            json_str = json.dumps(st.session_state.processed_data, ensure_ascii=False, indent=2)
-            st.download_button(
-                label="📥 JSON 데이터 다운로드",
-                data=json_str,
-                file_name="product_data.json",
-                mime="application/json"
-            )
     
     # 사이드바 - 추가 정보
     with st.sidebar:

@@ -4,6 +4,7 @@ import sys
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 import json
+import requests
 
 # 로거 임포트 추가
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -567,8 +568,32 @@ def show_generation_buttons(selected_user_image, selected_target_image, selected
                 st.session_state.composition_data = composition_data
                 logger.info(f"✅ {generation_type} 합성 데이터 준비 완료")
                 
-                st.success(f"🎉 {generation_type} 이미지 합성이 시작되었습니다!")
-                st.info("💡 합성 기능은 아직 구현 중입니다.")
+                # API 호출
+                with st.spinner(f"{generation_type} 이미지 합성 중..."):
+                    try:
+                        response = requests.post(
+                            "http://localhost:8010/api/image/compose",
+                            json=composition_data,
+                            timeout=60
+                        )
+                        
+                        if response.status_code == 200:
+                            result = response.json()
+                            if result.get('success'):
+                                st.success(f"🎉 {generation_type} 이미지 합성이 완료되었습니다!")
+                                
+                                # 결과 저장
+                                st.session_state.composition_result = result['data']
+                                
+                            else:
+                                st.error(f"❌ 합성 실패: {result.get('message', '알 수 없는 오류')}")
+                        else:
+                            st.error(f"❌ API 요청 실패: HTTP {response.status_code}")
+                            
+                    except requests.exceptions.Timeout:
+                        st.error("❌ 요청 시간 초과. 이미지 합성에는 시간이 걸릴 수 있습니다.")
+                    except Exception as e:
+                        st.error(f"❌ 합성 중 오류: {str(e)}")
         else:
             st.button(f"🎨 {generation_type} 합성 시작", use_container_width=True, disabled=True, key=f"generate_disabled_{generation_options['type']}")
             
@@ -668,6 +693,41 @@ def main():
                     del st.session_state[key]
             logger.info("✅ 선택 상태 초기화 완료")
             st.rerun()
+    
+    # 합성 결과 표시
+    if 'composition_result' in st.session_state:
+        st.markdown("---")
+        st.header("🎨 합성 결과")
+        
+        result = st.session_state.composition_result
+        
+        # 결과 이미지 표시
+        project_root = Path(__file__).parent.parent.parent
+        result_image_path = project_root / result['result_image_path']
+        
+        if result_image_path.exists():
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.image(str(result_image_path), caption="합성 결과", width=500)
+            
+            # 결과 정보
+            st.write(f"**생성 타입:** {result['generation_type']}")
+            st.write(f"**사용된 이미지 수:** {result['input_images']}개")
+            
+            # 사용된 프롬프트 표시
+            with st.expander("🔍 사용된 프롬프트 보기"):
+                st.code(result['prompt_used'])
+            
+            # 다운로드 버튼
+            with open(result_image_path, "rb") as file:
+                st.download_button(
+                    label="📥 결과 이미지 다운로드",
+                    data=file.read(),
+                    file_name=f"composed_result_{result['generation_type']}.png",
+                    mime="image/png"
+                )
+        else:
+            st.error("결과 이미지를 찾을 수 없습니다.")
 
 if __name__ == "__main__":
     main()
