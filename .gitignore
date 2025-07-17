@@ -229,7 +229,12 @@ output/
 result/
 /local_models/
 backend/models/adapter/*
+backend/models/controlnet-depth-sdxl-1.0/*
+backend/models/RealVisXL_V4.0/*
+backend/models/sdxl-vae-fp16-fix/*
+backend/models/stable-diffusion-xl-1.0-inpainting-0.1/*
 !backend/models/adapter/.gitkeep
+ys/
 Gukbap-Qwen2.5-7B/
 
 
