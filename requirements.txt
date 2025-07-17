@@ -1,13 +1,13 @@
 # 김민준
 
 # 박규리
-openai
-pyyaml
-python-dotenv
 # sudo apt install wkhtmltopdf
 # sudo apt install fonts-noto-cjk
 # sudo apt install build-essential
 # sudo apt install python3.10-dev
+openai
+pyyaml
+python-dotenv
 imgkit
 torch
 transformers
@@ -15,11 +15,16 @@ diffusers
 peft
 bitsandbytes
 
+rembg
+onnxruntime
+controlnet_aux
+
 # 이학진
 pymysql
 undetected_chromedriver
 bs4
 fake_useragent
+cryptography
 
 # 정영선
 pillow

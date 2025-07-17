@@ -14,16 +14,16 @@ def page_generator_main(product: dict, session_id: str):
     css_type = product.get("css_type", 1)
     
     css_template_path = os.path.join(base_dir, f"backend/page_generator/css/type{css_type}.css")
-    draft_html_path = os.path.join(base_dir, "backend/data/output", f"draft_{session_id}.html")
-    final_image_path = os.path.join(base_dir, "backend/data/result", f"final_{session_id}.png")
+    html_path = os.path.join(base_dir, "backend/data/result", f"page_{session_id}.html")
+    image_path = os.path.join(base_dir, "backend/data/result", f"page_{session_id}.png")
 
     # 원본 HTML 로드
     try:
-        with open(draft_html_path, "r", encoding="utf-8") as f:
+        with open(html_path, "r", encoding="utf-8") as f:
             draft_html = f.read()
             logger.info("✅ 원본 HTML 로드 완료")
     except FileNotFoundError:
-        raise FileNotFoundError(f"❌ HTML 원본 파일을 찾을 수 없습니다: {draft_html_path}")
+        raise FileNotFoundError(f"❌ HTML 원본 파일을 찾을 수 없습니다: {html_path}")
     except Exception as e:
         raise RuntimeError(f"❌ 원본 HTML 읽기 실패: {e}")
 
@@ -38,7 +38,7 @@ def page_generator_main(product: dict, session_id: str):
     try:
         config = imgkit.config(wkhtmltoimage='/usr/bin/wkhtmltoimage')
         options = { 'enable-local-file-access': None }
-        imgkit.from_string(final_html, final_image_path, config=config, options=options)
-        logger.info(f"✅ HTML → 이미지 변환 완료: {final_image_path}")
+        imgkit.from_string(final_html, image_path, config=config, options=options)
+        logger.info(f"✅ HTML → 이미지 변환 완료: {image_path}")
     except Exception as e:
         raise RuntimeError(f"❌ HTML → 이미지 변환 실패: {e}")

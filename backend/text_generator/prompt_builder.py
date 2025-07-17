@@ -76,6 +76,7 @@ def css_friendly_prompt():
 
     - <div class="product-page">: 전체 상세페이지 컨테이너
     - <h1 class="product-title">: 제품 제목
+    - <img class="product-image" src="..." alt="...">: 제품 착용 이미지
     - <p class="product-summary">: 간단한 제품 요약 문장
     - <ul class="product-features">: 제품 주요 특징 리스트
         - <li>단일 특징</li>
@@ -90,6 +91,7 @@ def css_friendly_prompt():
               </div>
 
     이 구조를 반드시 지켜주세요. class명은 변경하지 말고, 각 항목을 정확히 감싸주세요.
+    alt 속성은 제품명과 특징을 반영해 작성해주세요
     인용하는 전문가의 말은 반드시 <blockquote> 태그로 감싸주세요.
     강조할 키워드는 <strong> 태그로 감싸주세요.
     """

@@ -13,13 +13,13 @@ db_config:
   "db": "geo_db"
 
 input:
-  name: "우일 여성 여름 인견 7부 블라우스"
-  category: "블라우스"
-  price: 18000
-  brand: "우일"
-  features: "인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감"
-  image_path: "backend/data/input/greendress.jpg"
-  model_image_path: ""
-  mask_image_path: ""
+  name: "롤프 남성 정장자켓 수트마이 양복상의"
+  category: "양복"
+  price: 58000
+  brand: "롤프"
+  features: "꼼꼼한 박음질, 고급스러운 원단, 클래식한 디자인"
+  ip_image_path: "backend/data/input/suit.jpg"
+  model_image_path: "backend/data/input/a_man_posing_wearing_a_parakeet_t-shirt_removed_bg.png"
+  mask_image_path: "backend/data/input/a_man_posing_wearing_a_parakeet_t-shirt_mask_upperbody.jpg"
   css_type: 1 # 1 or 2
   engine: "openai" # "openai" or "hf"
