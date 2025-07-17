@@ -40,5 +40,4 @@ streamlit
 python-multipart
 peft
 controlnet_aux
-# mediapipe
 basicsr
