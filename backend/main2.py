@@ -1,5 +1,5 @@
 import asyncio
-from backend.competitor_analysis.core.competitor_main import competitor_main
+from backend.competitor_analysis.competitor_main import competitor_main
 from backend.text_generator.text_generator_main import text_generator_main
 from backend.page_generator.page_generator_main import page_generator_main
 from utils.logger import get_logger
@@ -16,7 +16,7 @@ def main():
     differences = asyncio.run(competitor_main(product))
 
     logger.info("🛠️ 텍스트 상세페이지 생성 시작")
-    session_id = text_generator_main(product, differences, output_path)
+    session_id = text_generator_main(product, output_path)
 
     logger.info("🛠️ 최종 상세페이지 생성 시작")
     page_generator_main(product, session_id)
