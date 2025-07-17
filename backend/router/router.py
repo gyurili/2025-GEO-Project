@@ -1,3 +1,5 @@
+# backend/router/router.py
+
 from fastapi import FastAPI, APIRouter, Body, Form
 from fastapi.responses import JSONResponse, FileResponse
 from typing import Dict, Any, Optional, List
@@ -45,7 +47,7 @@ async def async_vton_gen(product: dict) -> str:
 # ---- 1. input 라우터 ----
 @input_router.post("/")
 async def receive_product_info(
-    req: Dict[str, Any] = Body(...)
+    product: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
     """
     상품 dict(JSON Body) 받아 Diffusion+VTON 후보 이미지 각 1장 및 차별점 분석 병렬 처리
@@ -53,9 +55,9 @@ async def receive_product_info(
     logger.debug("🛠️ receive_product_info 진입 - dict/Body 기반")
     global latest_image_gen_result, latest_diff_result, latest_product
 
-    product = req["input"]
     latest_product = product
     try:
+        # 경쟁사 분석 + 이미지 2종 비동기 병렬 실행
         competitor_task = competitor_main(product)
         diffusion_task = async_diffusion_gen(product)
         vton_task = async_vton_gen(product)
