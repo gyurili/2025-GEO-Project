@@ -11,6 +11,7 @@ logger = get_logger(__name__)
 
 def run_virtual_tryon(
     pipeline,
+    midas_detector,
     model_image_path: str,
     ip_image_path: str,
     mask_image_path: str,
@@ -29,6 +30,7 @@ def run_virtual_tryon(
 
     Args:
         pipeline: get_vton_pipeline()으로 준비된 파이프라인
+        midas_detector: get_vton_pipeline()으로 준비된 MidasDetector
         model_image_path (str): 모델 이미지 경로
         ip_image_path (str): 의상 이미지 경로
         mask_image_path (str): 마스크 이미지 경로
@@ -52,7 +54,6 @@ def run_virtual_tryon(
     logger.info("✅ 입력 이미지, 의상 이미지, 마스크 로딩 완료")
 
     logger.debug("🛠️ Depth 제어 이미지 생성 시작")
-    midas_detector = MidasDetector.from_pretrained("lllyasviel/ControlNet")
     control_image_depth = midas_detector(model_image).resize((width, height)).convert("RGB")
     logger.info("✅ Depth 제어 이미지 생성 완료")
 

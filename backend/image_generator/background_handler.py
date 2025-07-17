@@ -266,9 +266,9 @@ class Img2ImgGenerator:
     def generate_img(
             self, 
             prompt: str,
+            negative_prompt: str,
             reference_image: Image.Image,
             filename: str,
-            negative_prompt: str = None,
             size=(512, 512),
             generator=None,
             num_inference_steps: int = 99, # 샘플링 단계 수
@@ -279,11 +279,11 @@ class Img2ImgGenerator:
 
         Args:
             prompt (str): 이미지를 생성할 긍정 프롬프트.
+            negative_prompt (str): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
+                                            기본값은 None.
             reference_image (PIL.Image.Image): 기반이 되는 이미지
             filename (str): 원본 파일 이름
             mask_image (PIL.Image.Image): 재생성할 곳을 표시하는 마스크 이미지
-            negative_prompt (str, optional): 이미지에 포함하고 싶지 않은 요소를 정의하는 부정 프롬프트.
-                                            기본값은 None.
             size (tuple, optional): 생성할 이미지의 크기 (width, height). 기본값은 (512, 512).
             num_inference_steps (int, optional): 이미지 생성에 사용할 샘플링 단계 수.
                                                 값이 높을수록 품질은 좋아지지만 시간이 오래 걸릴 수 있습니다.
