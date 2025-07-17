@@ -1,25 +1,17 @@
 settings:
   verbose: false
-  project_root: ""
-
+  project_root: /home/ubuntu/2025-GEO-Project
 data:
-  output_path: backend/data/output
-  result_path: backend/data/result
-
-db_config:
-  "host": "34.122.201.101"
-  "user": "GEOGEO"
-  "password": ""
-  "db": "geo_db"
-
+  output_path: /home/ubuntu/2025-GEO-Project/backend/data/output
+  result_path: /home/ubuntu/2025-GEO-Project/backend/data/result
 input:
-  name: "우일 여성 여름 인견 7부 블라우스"
-  category: "블라우스"
-  price: 18000
-  brand: "우일"
-  features: "인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감"
-  image_path: "backend/data/input/greendress.jpg"
-  model_image_path: ""
-  mask_image_path: ""
-  css_type: 1 # 1 or 2
-  engine: "openai" # "openai" or "hf"
+  name: 한성컴퓨터
+  category: 컴퓨터
+  price: 2000
+  brand: 한성
+  features: 최고
+  css_type: 1
+  image_path:
+  - backend/data/input/product_875fa485b76e4d839775d518cc90dc6f_0.jpg
+  - backend/data/input/product_a8d8b4e66c7b40a484ce5af6987fff07_1.jpg
+  - backend/data/input/product_2b11219fa3974c8e9f95cf1ad90fd894_2.jpg
