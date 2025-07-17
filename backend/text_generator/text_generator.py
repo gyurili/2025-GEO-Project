@@ -47,6 +47,8 @@ def generate_openai(product: dict) -> dict:
         prompt_parts.insert(1, diff_prompt)
     
     prompt_parts += [
+        f'이미지 태그는 다음 형식을 지켜주세요. <img class="product-image" src="{product["vton_image_path"]}" alt=" ">',
+        "alt 속성은 제품명과 특징을 바탕으로 자동 생성해주세요.",
         "모든 정보를 HTML로 출력해주세요. 제공된 정보를 바탕으로 상세페이지를 풍성하고 길게 만들어주세요.",
         "결과는 <html> ~ </html> 태그 안에 있어야 합니다"
     ]
@@ -90,13 +92,15 @@ def generate_hf(product: dict) -> dict:
     global hf_model, hf_tokenizer
     
     if hf_model is None:
-        logger.info("🛠️ HuggingFace 모델 최초 로딩 중")
+        logger.info("🛠️ HuggingFace 모델 로딩 중")
         hf_model, hf_tokenizer = load_hf_model()
-    
+        
     prompt_parts = [
         system_instruction(product).strip(),
         css_friendly_prompt().strip(),
         "다음은 제품 상세페이지 HTML입니다.",
+        f'이미지 태그는 다음 형식을 지켜주세요. <img class="product-image" src="{product["vton_image_path"]}" alt=" ">',
+        "alt 속성은 제품명과 특징을 바탕으로 자동 생성해주세요.",
         "<!DOCTYPE html>"
     ]
     

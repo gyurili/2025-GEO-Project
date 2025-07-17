@@ -6,10 +6,10 @@ import torch
 from PIL import Image
 
 from utils.logger import get_logger
-from .core.image_loader import ImageLoader
-from .core.background_handler import BackgroundHandler, Img2ImgGenerator
-from .core.prompt_builder import generate_prompts
-from .core.virtual_try_on import run_virtual_tryon
+from .image_loader import ImageLoader
+from .background_handler import BackgroundHandler, Img2ImgGenerator
+from .prompt_builder import generate_prompts
+from .virtual_try_on import run_virtual_tryon
 from backend.models.model_handler import get_model_pipeline, get_vton_pipeline
 
 '''
@@ -154,6 +154,7 @@ def vton_generator_main(
     model_image_path: str,
     ip_image_path:str,
     mask_image_path:str,
+    seed:int = None,
 ):
     """
     Virtual Try-On (VTON) 기능을 통해 모델 이미지에 의류를 합성합니다.
@@ -176,6 +177,7 @@ def vton_generator_main(
         model_image_path (str): 모델(사람) 이미지의 파일 경로.
         ip_image_path (str): 의류 이미지 파일 경로.
         mask_image_path (str): 합성할 영역의 마스크 이미지 경로.
+        seed (int): 랜덤시드. 미지정시 시간기반지정
 
     Returns:
         dict: {
@@ -250,6 +252,7 @@ def vton_generator_main(
             strength=0.99,
             guidance_scale=7.5,
             num_inference_steps=100,
+            seed=seed
         )
     except Exception as e:
         logger.error(f"❌ VTON 처리 중 오류 발생: {e}")
