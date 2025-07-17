@@ -5,8 +5,8 @@ import torch
 from utils.logger import get_logger
 from backend.image_generator.image_generator_main import image_generator_main, vton_generator_main
 
-from backend.image_generator.core.background_handler import BackgroundHandler
-from backend.image_generator.core.image_loader import ImageLoader
+from backend.image_generator.background_handler import BackgroundHandler
+from backend.image_generator.image_loader import ImageLoader
 
 logger = get_logger(__name__)
 
@@ -48,9 +48,9 @@ if __name__ == "__main__":
         # 2. 모델 이미지에 제품 이미지를 착용하는 vton버전
         logger.debug("🛠️ vton 생성 시작")
         result = vton_generator_main(
-            model_image_path="/home/user/2025-GEO-Project/backend/data/output/model_removed_bg.png",
-            ip_image_path="/home/user/2025-GEO-Project/backend/data/input/aidress.jpg",
-            mask_image_path="/home/user/2025-GEO-Project/backend/data/input/model_mask3.png",
+            model_image_path="/home/user/2025-GEO-Project/backend/data/output/a_man_posing_wearing_a_parakeet_t-shirt_removed_bg.png",
+            ip_image_path="/home/user/2025-GEO-Project/backend/data/input/suit.jpg",
+            mask_image_path="/home/user/2025-GEO-Project/backend/data/input/a_man_posing_wearing_a_parakeet_t-shirt_mask_upperbody.jpg",
         )
         logger.info("✅ vton 생성 완료")
 

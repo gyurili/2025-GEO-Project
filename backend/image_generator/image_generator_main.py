@@ -6,10 +6,10 @@ import torch
 from PIL import Image
 
 from utils.logger import get_logger
-from .core.image_loader import ImageLoader
-from .core.background_handler import BackgroundHandler, Img2ImgGenerator
-from .core.prompt_builder import generate_prompts
-from .core.virtual_try_on import run_virtual_tryon
+from .image_loader import ImageLoader
+from .background_handler import BackgroundHandler, Img2ImgGenerator
+from .prompt_builder import generate_prompts
+from .virtual_try_on import run_virtual_tryon
 from backend.models.model_handler import get_model_pipeline, get_vton_pipeline
 
 '''
