@@ -22,7 +22,11 @@ def clean_response(html_text: str, strict: bool = False) -> str:
         html_text = html_text.rstrip()[:-3].rstrip()
 
     if strict:
-        match = re.search(r"<!DOCTYPE html>[\s\S]*?</html>", html_text, re.IGNORECASE)
-        return match.group(0) if match else html_text
+        start = html_text.find("<!DOCTYPE html>")
+        end = html_text.find("</html>")
+        if start != -1 and end != -1:
+            return html_text[start:end + len("</html>")]
+        else:
+            return html_text[start:] if start != -1 else html_text
 
     return html_text
