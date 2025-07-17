@@ -7,7 +7,6 @@ from utils.logger import get_logger
 
 from input_handler.api.input_router import router as input_router
 from input_handler.core.input_main import InputHandler
-from image_generator.api.image_router import router as image_router
 
 # 로거 설정
 logger = get_logger(__name__)
@@ -70,9 +69,6 @@ logger.debug("🛠️ CORS 미들웨어 설정 완료 (모든 origin 허용)")
 logger.debug("🛠️ API 라우터 등록 시작")
 app.include_router(input_router)
 logger.debug("🛠️ input_router 등록 완료")
-# 이미지 생성기 등록
-app.include_router(image_router)
-logger.debug("🛠️ image_router 등록 완료")
 
 logger.info("✅ FastAPI 애플리케이션 설정 완료")
 
