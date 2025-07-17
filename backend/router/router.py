@@ -31,18 +31,18 @@ latest_product: Optional[Dict[str, Any]] = None
 async def async_diffusion_gen(product: dict) -> str:
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, lambda: image_generator_main(
-        product, product["image_path"], prompt_mode="human"
+        product, product["ip_image_path"], prompt_mode="human"
     ))
-    return result["image_path"] if result and result.get("image_path") else None
+    return result["ip_image_path"] if result and result.get("image_path") else None
 
 async def async_vton_gen(product: dict) -> str:
     model_image_path = product.get("model_image_path", "backend/data/input/model.jpg")
     mask_image_path = product.get("mask_image_path", None)
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(None, lambda: vton_generator_main(
-        model_image_path, product["image_path"], mask_image_path
+        model_image_path, product["ip_image_path"], mask_image_path
     ))
-    return result["image_path"] if result and result.get("image_path") else None
+    return result["ip_image_path"] if result and result.get("ip_image_path") else None
 
 # ---- 1. input 라우터 ----
 @input_router.post("/")
