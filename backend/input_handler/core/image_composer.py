@@ -97,55 +97,64 @@ class ImageComposer:
             logger.error(f"❌ {image_type} 이미지 로드 실패: {e}")
             return None
     
-    def convert_korean_request_to_prompt(self, korean_request: str, num_images: int, generation_type: str) -> Optional[str]:
-        """한글 요청사항을 영문 이미지 생성 프롬프트로 변환"""
-        logger.debug(f"🛠️ 프롬프트 변환 시작: {generation_type} 타입")
+    def convert_korean_request_to_prompt(self, korean_request: str, num_images: int, generation_type: str, num_products: int = 1) -> Optional[str]:
+        """한글 요청사항을 영문 이미지 생성 프롬프트로 변환 (다중 상품 이미지 지원)"""
+        logger.debug(f"🛠️ 프롬프트 변환 시작: {generation_type} 타입, {num_products}개 상품")
         
         if not self.openai_client:
             logger.error("❌ OpenAI 클라이언트가 초기화되지 않음")
             return None
         
-        # 이미지 참조 번호 생성
-        image_refs = ", ".join([f"(#{i+1})" for i in range(num_images)])
+        # 이미지 참조 번호 생성 (다중 상품 지원)
+        if num_products > 1:
+            product_refs = ", ".join([f"(#{i+1})" for i in range(num_products)])
+            target_ref = f"(#{num_products + 1})"
+            mask_ref = f"(#{num_products + 2})" if num_images > num_products + 1 else ""
+        else:
+            product_refs = "(#1)"
+            target_ref = "(#2)"
+            mask_ref = "(#3)" if num_images > 2 else ""
         
         if generation_type == "model":
             system_prompt = f"""
-당신은 이미지 생성 프롬프트 전문가입니다. 
-사용자의 한글 요청사항을 모델과 상품 합성을 위한 영문 이미지 생성 프롬프트로 변환해주세요.
+    당신은 이미지 생성 프롬프트 전문가입니다. 
+    사용자의 한글 요청사항을 모델과 상품 합성을 위한 영문 이미지 생성 프롬프트로 변환해주세요.
 
-규칙:
-1. 자연스럽고 현실적인 이미지 생성을 위한 프롬프트를 작성하세요
-2. 이미지 참조는 {image_refs} 형식으로 사용하세요 (첫 번째는 상품, 나머지는 모델/마스크)
-3. 텍스트나 글자가 포함되지 않도록 지시하세요
-4. "Generate a natural-looking image"로 시작하는 것을 권장합니다
+    규칙:
+    1. 자연스럽고 현실적인 이미지 생성을 위한 프롬프트를 작성하세요
+    2. 상품 이미지 참조: {product_refs}, 모델 이미지: {target_ref}{', 마스크: ' + mask_ref if mask_ref else ''}
+    3. 텍스트나 글자가 포함되지 않도록 지시하세요
+    4. "Generate a natural-looking image"로 시작하는 것을 권장합니다
 
-모델과 상품 합성:
-- 모델의 신체 비율과 포즈를 유지하도록 지시하세요
-- 의상을 입히는 경우 "naturally wearing"과 같은 표현을 사용하세요
-- 물건을 들고 있는 경우 "holding"과 같은 표현을 사용하세요
-- 상품이 모델에게 자연스럽게 맞도록 지시하세요
+    다중 상품과 모델 합성:
+    - 모델의 신체 비율과 포즈를 유지하도록 지시하세요
+    - 여러 상품이 있는 경우 자연스럽게 배치하도록 지시하세요
+    - 의상을 입히는 경우 "naturally wearing"과 같은 표현을 사용하세요
+    - 물건을 들고 있는 경우 "holding" 또는 "using"과 같은 표현을 사용하세요
 
-예시:
-"상품을 모델이 착용하게 해주세요" → "Generate a natural-looking image where the model from (#2) maintains their body proportions and pose, but is naturally wearing the product from (#1) as if they were actually wearing it. Do not include any text or letters in the image."
+    예시:
+    - 단일 상품: "Generate a natural-looking image where the model from {target_ref} maintains their body proportions and pose, but is naturally wearing the product from {product_refs}."
+    - 다중 상품: "Generate a natural-looking image where the model from {target_ref} maintains their body proportions and pose, naturally interacting with all products from {product_refs} in a cohesive and realistic way."
             """
         else:  # background
             system_prompt = f"""
-당신은 이미지 생성 프롬프트 전문가입니다. 
-사용자의 한글 요청사항을 상품 배경 합성을 위한 영문 이미지 생성 프롬프트로 변환해주세요.
+    당신은 이미지 생성 프롬프트 전문가입니다. 
+    사용자의 한글 요청사항을 상품 배경 합성을 위한 영문 이미지 생성 프롬프트로 변환해주세요.
 
-규칙:
-1. 자연스럽고 현실적인 이미지 생성을 위한 프롬프트를 작성하세요
-2. 이미지 참조는 {image_refs} 형식으로 사용하세요 (첫 번째는 상품, 두 번째는 배경)
-3. 텍스트나 글자가 포함되지 않도록 지시하세요
-4. "Generate a natural-looking image"로 시작하는 것을 권장합니다
+    규칙:
+    1. 자연스럽고 현실적인 이미지 생성을 위한 프롬프트를 작성하세요
+    2. 상품 이미지 참조: {product_refs}, 배경 이미지: {target_ref}
+    3. 텍스트나 글자가 포함되지 않도록 지시하세요
+    4. "Generate a natural-looking image"로 시작하는 것을 권장합니다
 
-상품 배경 합성:
-- 상품을 자연스러운 배경이나 환경에 배치하도록 지시하세요
-- "placed in", "positioned on", "set against" 등의 표현을 사용하세요
-- 상품의 원래 형태와 특성을 유지하도록 지시하세요
+    다중 상품과 배경 합성:
+    - 여러 상품이 있는 경우 배경에 자연스럽게 배치하도록 지시하세요
+    - "placed in", "positioned on", "arranged in" 등의 표현을 사용하세요
+    - 상품들의 원래 형태와 특성을 유지하도록 지시하세요
 
-예시:
-"고급 레스토랑 배경에 놓고 싶다" → "Generate a natural-looking image of the product from (#1) elegantly placed in the upscale restaurant setting from (#2). Do not include any text or letters in the image."
+    예시:
+    - 단일 상품: "Generate a natural-looking image of the product from {product_refs} elegantly placed in the setting from {target_ref}."
+    - 다중 상품: "Generate a natural-looking image with all products from {product_refs} beautifully arranged in the setting from {target_ref}, maintaining their individual characteristics."
             """
         
         try:
@@ -156,7 +165,7 @@ class ImageComposer:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": korean_request or "자연스럽게 합성해주세요"}
                 ],
-                max_tokens=200,
+                max_tokens=300,  # 다중 상품용으로 토큰 수 증가
                 temperature=0.7
             )
             
@@ -240,12 +249,12 @@ class ImageComposer:
             return None
     
     def compose_images(self, composition_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """이미지 합성 메인 함수"""
+        """이미지 합성 메인 함수 (다중 상품 이미지 지원)"""
         logger.debug("🛠️ 이미지 합성 프로세스 시작")
         
         try:
-            # 입력 데이터 추출
-            user_image_data = composition_data['user_image']
+            # 입력 데이터 추출 (user_images로 변경)
+            user_images_data = composition_data.get('user_images', [])
             target_image_data = composition_data['target_image'] 
             mask_image_data = composition_data.get('mask_image')
             generation_options = composition_data['generation_options']
@@ -254,16 +263,20 @@ class ImageComposer:
             custom_prompt = generation_options.get('custom_prompt', '')
             
             logger.debug(f"🛠️ 합성 타입: {generation_type}")
+            logger.debug(f"🛠️ 사용자 이미지 수: {len(user_images_data)}")
             logger.debug(f"🛠️ 커스텀 프롬프트: {custom_prompt}")
             
             # 이미지 로드
             images = []
             
-            # 사용자 이미지 로드 (상품 이미지)
-            user_image = self._load_image_safely(user_image_data['path'], 'user', 'RGB')
-            if not user_image:
-                return None
-            images.append(user_image)
+            # 다중 사용자 이미지들 로드
+            for i, user_image_data in enumerate(user_images_data):
+                user_image = self._load_image_safely(user_image_data['path'], f'user_{i+1}', 'RGB')
+                if not user_image:
+                    logger.error(f"❌ 사용자 이미지 {i+1} 로드 실패")
+                    return None
+                images.append(user_image)
+                logger.debug(f"🛠️ 사용자 이미지 {i+1} 추가됨")
             
             # 타겟 이미지 로드 (모델 또는 배경)
             target_image = self._load_image_safely(target_image_data['path'], 'target', 'RGB')
@@ -280,10 +293,12 @@ class ImageComposer:
                 else:
                     logger.warning("⚠️ 마스크 이미지 로드 실패, 마스크 없이 진행")
             
-            # 프롬프트 변환
+            logger.debug(f"🛠️ 총 이미지 수: {len(images)}개 (상품: {len(user_images_data)}, 타겟: 1, 마스크: {'1' if mask_image_data and mask_image_data.get('path') else '0'})")
+            
+            # 프롬프트 변환 (다중 이미지 처리)
             logger.debug("🛠️ 프롬프트 변환 시작")
             english_prompt = self.convert_korean_request_to_prompt(
-                custom_prompt, len(images), generation_type
+                custom_prompt, len(images), generation_type, len(user_images_data)
             )
             
             if not english_prompt:
@@ -305,7 +320,7 @@ class ImageComposer:
             result_dir = project_root / "backend" / "data" / "result"
             result_dir.mkdir(parents=True, exist_ok=True)
             
-            result_filename = f"composed_{generation_type}_{uuid.uuid4().hex[:8]}.png"
+            result_filename = f"composed_{generation_type}_{len(user_images_data)}products_{uuid.uuid4().hex[:8]}.png"
             result_path = result_dir / result_filename
             
             result_image.save(result_path)
@@ -319,7 +334,8 @@ class ImageComposer:
                 'result_image_path': relative_path,
                 'prompt_used': english_prompt,
                 'generation_type': generation_type,
-                'input_images': len(images)
+                'input_images': len(images),
+                'product_images_count': len(user_images_data)
             }
             
         except Exception as e:

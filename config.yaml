@@ -5,11 +5,12 @@ data:
   output_path: /home/ubuntu/2025-GEO-Project/backend/data/output
   result_path: /home/ubuntu/2025-GEO-Project/backend/data/result
 input:
-  name: 청바지
-  category: 의류
+  name: '123'
+  category: '123123'
   price: 2000
-  brand: 보세
-  features: 최고
+  brand: '12321'
+  features: '123'
   css_type: 1
   image_path:
-  - backend/data/input/product_ba668b87ce5044c188d18b6eb7526dbb_0.jpg
+  - backend/data/input/product_0709a9a1237e4868837a3e2c252c422c_0.jpg
+  - backend/data/input/product_4ce27afa5e35446fae214f418a09da7c_1.jpg

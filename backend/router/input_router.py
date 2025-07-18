@@ -5,17 +5,16 @@ import sys
 from pathlib import Path
 
 # 로거 임포트 추가
-sys.path.append(str(Path(__file__).parent.parent.parent))
+sys.path.append(str(Path(__file__).parent.parent.parent))  # 프로젝트 루트만 추가
 from utils.logger import get_logger
-
-from ..core.input_main import InputHandler
-from ..schemas.input_schema import ProductInputSchema
+from backend.input_handler.core.input_main import InputHandler
+from backend.input_handler.schemas.input_schema import ProductInputSchema
+from backend.input_handler.core.image_composer import ImageComposer
 
 # 로거 설정
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/input", tags=["input"])
-
 
 # InputHandler 인스턴스 생성 (의존성 주입)
 def get_input_handler() -> InputHandler:
@@ -27,6 +26,18 @@ def get_input_handler() -> InputHandler:
         return handler
     except Exception as e:
         logger.error(f"❌ InputHandler 인스턴스 생성 실패: {e}")
+        raise
+
+# ImageComposer 인스턴스 생성 (의존성 주입)
+def get_image_composer() -> ImageComposer:
+    """ImageComposer 인스턴스 반환"""
+    logger.debug("🛠️ ImageComposer 인스턴스 생성 시작")
+    try:
+        composer = ImageComposer()
+        logger.info("✅ ImageComposer 인스턴스 생성 완료")
+        return composer
+    except Exception as e:
+        logger.error(f"❌ ImageComposer 인스턴스 생성 실패: {e}")
         raise
 
 
@@ -322,6 +333,88 @@ async def health_check():
             "service": "input_handler"
         }
         logger.info("✅ Input Handler API 상태 확인 완료 - 정상")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ API 상태 확인 실패: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"API 상태 확인 실패: {str(e)}"
+        )
+
+@router.post("/compose")
+async def compose_image(
+    composition_data: Dict[str, Any],
+    composer: ImageComposer = Depends(get_image_composer)
+):
+    """
+    이미지 합성 API (다중 상품 이미지 → 단일 결과)
+    """
+    logger.debug("🛠️ 이미지 합성 API 호출")
+    
+    # user_images와 user_image 둘 다 지원 (하위 호환성)
+    user_images = composition_data.get('user_images', [])
+    if not user_images and 'user_image' in composition_data:
+        user_images = [composition_data['user_image']]
+        composition_data['user_images'] = user_images
+    
+    logger.debug(f"🛠️ 합성 데이터: {list(composition_data.keys())}")
+    logger.debug(f"🛠️ 상품 이미지 수: {len(user_images)}")
+    
+    try:
+        # 필수 데이터 확인
+        required_fields = ['user_images', 'target_image', 'generation_options']
+        missing_fields = [field for field in required_fields if field not in composition_data]
+        
+        if missing_fields:
+            logger.error(f"❌ 필수 필드 누락: {missing_fields}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"필수 필드가 누락되었습니다: {missing_fields}"
+            )
+        
+        # 이미지 합성 실행
+        logger.debug("🛠️ ImageComposer를 통한 이미지 합성 시작")
+        result = composer.compose_images(composition_data)
+        
+        if result:
+            logger.info(f"✅ 이미지 합성 완료 ({result.get('product_images_count', 1)}개 상품)")
+            response = {
+                "success": True,
+                "message": f"이미지 합성이 완료되었습니다 ({result.get('product_images_count', 1)}개 상품)",
+                "data": result
+            }
+            return response
+        else:
+            logger.error("❌ 이미지 합성 실패")
+            raise HTTPException(
+                status_code=500,
+                detail="이미지 합성에 실패했습니다"
+            )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 이미지 합성 API 실패: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"이미지 합성 중 오류 발생: {str(e)}"
+        )
+
+@router.get("/image-health")
+async def health_check():
+    """
+    이미지 생성 API 상태 확인
+    """
+    logger.debug("🛠️ 이미지 생성 API 상태 확인")
+    
+    try:
+        response = {
+            "success": True,
+            "message": "Image Generator API 정상 작동 중",
+            "service": "image_generator"
+        }
+        logger.info("✅ 이미지 생성 API 상태 확인 완료")
         return response
         
     except Exception as e:
