@@ -63,12 +63,13 @@ def generate_human_prompt(product: dict) -> str | None:
     """
     try:
         system_prompt = (
-            "You are a visual prompt engineer. Based on the product description in Korean, "
-            "list visual elements that should NOT appear in the image so the product remains the main focus.\n"
-            "- Exclude text, logos, busy patterns, excessive clutter, irrelevant objects, and flashy colors.\n"
-            "- Do NOT exclude faces or people.\n"
-            "- Output a comma-separated list of keywords only.\n"
-            "- Example: text, logo, clutter, busy background, bright colors, excessive objects."
+            "You are a prompt designer for AI image generation.\n\n"
+            "Based on the product description in Korean, write an English prompt that shows a person naturally using the product.\n\n"
+            "- The person can be fully visible (face allowed) but the product must be the main focus.\n"
+            "- Make the scene realistic and relatable, like a lifestyle photo.\n"
+            "- Avoid distractions: no unnecessary objects, no text overlays, no logos.\n"
+            "- The background should complement the product, not overpower it.\n"
+            "- Output one short sentence in English, under 15 words."
         )
 
         user_prompt = build_prompt(product)  # 기존 제품 요약 한국어 문자열
@@ -99,11 +100,11 @@ def generate_negative_prompt(product: dict) -> str | None:
     try:
         system_prompt = (
             "You are a visual prompt engineer. Based on the product description in Korean, "
-            "list visual elements that should NOT appear in the background so the product stands out clearly.\n"
-            "- Include things like distracting textures, objects, people, or strong visual elements.\n"
-            "- Always exclude face, eyes, portrait, logo, text, busy patterns, and bright or flashy colors.\n"
-            "- Output a comma-separated list of keywords only, not full sentences.\n"
-            "- Example: face, eyes, portrait, hands, logo, text, clutter, bright colors, busy background, background people."
+            "list visual elements that should NOT appear in the image so the product remains the main focus.\n"
+            "- Exclude text, logos, busy patterns, excessive clutter, irrelevant objects, and flashy colors.\n"
+            "- Do NOT exclude faces or people.\n"
+            "- Output a comma-separated list of keywords only.\n"
+            "- Example: text, logo, clutter, busy background, bright colors, excessive objects."
         )
 
         user_prompt = build_prompt(product)  # 기존 제품 요약 한국어 문자열
