@@ -1,17 +1,9 @@
 settings:
   verbose: false
-  project_root: ""
-
+  project_root: /home/ubuntu/2025-GEO-Project
 data:
-  output_path: backend/data/output
-  result_path: backend/data/result
-
-db_config:
-  "host": "34.122.201.101"
-  "user": "GEOGEO"
-  "password": ""
-  "db": "geo_db"
-
+  output_path: /home/ubuntu/2025-GEO-Project/backend/data/output
+  result_path: /home/ubuntu/2025-GEO-Project/backend/data/result
 input:
   name: "롤프 남성 정장자켓 수트마이 양복상의"
   category: "양복"
@@ -23,3 +15,4 @@ input:
   mask_image_path: "backend/data/input/a_man_posing_wearing_a_parakeet_t-shirt_mask_upperbody.jpg"
   css_type: 1 # 1 or 2
   engine: "openai" # "openai" or "hf"
+

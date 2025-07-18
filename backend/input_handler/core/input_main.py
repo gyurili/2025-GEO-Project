@@ -2,6 +2,10 @@ import os
 import yaml
 from typing import Dict, Any, Optional, List
 from pathlib import Path
+
+# 로거 임포트 추가
+import sys
+sys.path.append(str(Path(__file__).parent.parent.parent))
 from utils.logger import get_logger
 
 from .form_parser import FormParser
@@ -114,7 +118,7 @@ class InputHandler:
     
     def process_image_upload(self, uploaded_file) -> Optional[str]:
         """업로드된 이미지 처리 (단일 파일)"""
-        logger.debug(f"🛠️ 단일 이미지 업로드 처리 시작: {uploaded_file.name if uploaded_file else 'None'}")
+        logger.debug(f"🛠️ 단일 이미지 업로드 처리 시작: {getattr(uploaded_file, 'name', getattr(uploaded_file, 'filename', 'None')) if uploaded_file else 'None'}")
         
         try:
             if uploaded_file is None:
@@ -149,24 +153,36 @@ class InputHandler:
             # 1. 폼 데이터 파싱 및 검증 (이미지 제외)
             logger.debug("🛠️ 1단계: 폼 데이터 파싱 및 검증 시작")
             temp_data = form_data.copy()
-            temp_data['image_path'] = ['temp']  # 임시 값 (검증 통과용)
+            
+            # 이미지가 있는 경우에만 임시 값 설정
+            if uploaded_files and len(uploaded_files) > 0:
+                temp_data['image_path'] = ['temp']  # 임시 값 (검증 통과용)
+                logger.debug("🛠️ 이미지 파일 존재 - 임시 image_path 설정")
+            else:
+                logger.debug("🛠️ 이미지 파일 없음 - image_path 설정하지 않음")
             
             parsed_data = self.form_parser.parse_form_data(temp_data)
             logger.debug("🛠️ 폼 데이터 파싱 완료")
             
-            # 2. 이미지 처리 (필수)
+            # 2. 이미지 처리 (선택사항)
             logger.debug("🛠️ 2단계: 이미지 처리 시작")
-            if not uploaded_files:
-                logger.error("❌ 이미지 필수 항목 누락")
-                raise ValueError("이미지는 필수 항목입니다. 최소 1개의 이미지를 업로드해주세요.")
-            
-            image_paths = self.process_multiple_images(uploaded_files)
-            if not image_paths:
-                logger.error("❌ 모든 이미지 처리 실패")
-                raise ValueError("이미지 처리에 실패했습니다. 올바른 이미지 파일을 업로드해주세요.")
-            
-            parsed_data['image_path'] = image_paths
-            logger.debug(f"🛠️ 이미지 경로 설정 완료: {len(image_paths)}개")
+            if uploaded_files and len(uploaded_files) > 0:
+                logger.debug(f"🛠️ 이미지 파일 처리 시작: {len(uploaded_files)}개")
+                image_paths = self.process_multiple_images(uploaded_files)
+                
+                if image_paths:
+                    parsed_data['image_path'] = image_paths
+                    logger.debug(f"🛠️ 이미지 경로 설정 완료: {len(image_paths)}개")
+                else:
+                    logger.warning("⚠️ 일부 또는 모든 이미지 처리 실패")
+                    # 이미지 처리 실패해도 계속 진행 (이미지는 선택사항)
+                    if 'image_path' in parsed_data:
+                        del parsed_data['image_path']
+            else:
+                logger.debug("🛠️ 업로드된 이미지 없음 - 이미지 처리 건너뜀")
+                # 임시로 설정된 image_path 제거
+                if 'image_path' in parsed_data:
+                    del parsed_data['image_path']
             
             # 3. config.yaml 생성
             logger.debug("🛠️ 3단계: config.yaml 생성 시작")
@@ -189,8 +205,15 @@ class InputHandler:
                 logger.warning("⚠️ 처리할 이미지 파일이 없음")
                 return []
             
-            # 파일명 로그
-            file_names = [f.name for f in uploaded_files]
+            # 파일명 로그 (FastAPI와 Streamlit 모두 지원)
+            file_names = []
+            for f in uploaded_files:
+                if hasattr(f, 'filename'):  # FastAPI UploadFile
+                    file_names.append(f.filename)
+                elif hasattr(f, 'name'):   # Streamlit 업로드 파일
+                    file_names.append(f.name)
+                else:
+                    file_names.append('unknown')
             logger.debug(f"🛠️ 업로드된 파일들: {file_names}")
             
             # 이미지 처리
@@ -284,6 +307,13 @@ class InputHandler:
                 else:
                     logger.debug("🛠️ 모든 필수 필드 확인됨")
                 
+                # 이미지 필드 확인 (선택사항)
+                if 'image_path' in product_input:
+                    image_count = len(product_input['image_path']) if isinstance(product_input['image_path'], list) else 1
+                    logger.debug(f"🛠️ 이미지 파일: {image_count}개")
+                else:
+                    logger.debug("🛠️ 이미지 파일 없음")
+                
                 logger.info("✅ product_input 딕셔너리 추출 완료")
             else:
                 logger.warning("⚠️ product_input이 딕셔너리 형태가 아님")
@@ -318,10 +348,16 @@ class InputHandler:
                 logger.error(f"❌ 필수 섹션 누락: {missing_sections}")
                 return False
             
-            # 입력 데이터 검증
+            # 입력 데이터 검증 (이미지는 선택사항이므로 제외)
             logger.debug("🛠️ 입력 데이터 스키마 검증 시작")
             input_data = config['input']
-            validated_data = self.form_parser.schema(**input_data)
+            
+            # 이미지 필드가 없어도 검증할 수 있도록 임시 추가
+            temp_input_data = input_data.copy()
+            if 'image_path' not in temp_input_data:
+                temp_input_data['image_path'] = []  # 빈 리스트로 설정
+            
+            validated_data = self.form_parser.schema(**temp_input_data)
             logger.debug("🛠️ 스키마 검증 통과")
             
             logger.info("✅ config.yaml 유효성 검증 완료 - 유효함")
