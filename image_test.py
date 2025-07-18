@@ -3,7 +3,7 @@ import os
 import torch
 
 from utils.logger import get_logger
-from backend.image_generator.image_generator_main import image_generator_main, vton_generator_main, ImgGenPipeline
+from backend.image_generator.image_generator_main import ImgGenPipeline
 from backend.image_generator.background_handler import BackgroundHandler
 from backend.image_generator.image_loader import ImageLoader
 
@@ -24,7 +24,8 @@ if __name__ == "__main__":
         image_path = product["ip_image_path"]
 
         logger.debug("🛠️ 이미지 생성기 시작")
-        image_generator = ImgGenPipeline()
+        image_generator = ImgGenPipeline()  # 클래스 변수 선언
+
         image_dict1 = image_generator.generate_image(
             product=product,
             image_path=image_path,
@@ -34,31 +35,19 @@ if __name__ == "__main__":
         else:
             logger.error("❌ 최종 이미지 생성 실패")
 
-        image_dict2 = image_generator.generate_vton(
-            product['model_image_path'],
-            product['ip_image_path'],
-            product['mask_image_path'],
-        )
-        if image_dict2["image"]:
-            logger.info("✅ 최종 이미지 생성 완료")
-        else:
-            logger.error("❌ 최종 이미지 생성 실패")
-
-
-        # # ----------------------------------------------
-        # # 2. 모델 이미지에 제품 이미지를 착용하는 vton버전
-        # logger.debug("🛠️ vton 생성 시작")
-        # result = vton_generator_main(
-        #     model_image_path="/home/user/2025-GEO-Project/backend/data/input/andrew-heald-Da7luWG-oGQ-unsplash_removed_bg.png",
-        #     ip_image_path="/home/user/2025-GEO-Project/backend/data/input/footwear.jpg",
-        #     mask_image_path="/home/user/2025-GEO-Project/backend/data/input/andrew-heald-Da7luWG-oGQ-unsplash_mask_shoes.jpg",
-        #     seed=42
+        # image_dict2 = image_generator.generate_vton(
+        #     product['model_image_path'],
+        #     product['ip_image_path'],
+        #     product['mask_image_path'],
         # )
-        # logger.info("✅ vton 생성 완료")
+        # if image_dict2["image"]:
+        #     logger.info("✅ 최종 이미지 생성 완료")
+        # else:
+        #     logger.error("❌ 최종 이미지 생성 실패")
 
 
         # # ----------------------------------------------
-        # # 3. 이미지 누끼 따기 및 마스크 만들기용
+        # # 2. 이미지 누끼 따기 및 마스크 만들기용
         # img_loader = ImageLoader()
         # img, filename = img_loader.load_image("/home/user/2025-GEO-Project/backend/data/input/andrew-heald-Da7luWG-oGQ-unsplash.jpg")
         # bg_handler = BackgroundHandler()

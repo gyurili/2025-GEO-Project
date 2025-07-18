@@ -311,6 +311,6 @@ def get_vton_pipeline(
     except Exception as e:
         logger.warning(f"⚠️ LoRA 적용 실패: {e}")
 
-    midas_detector = MidasDetector.from_pretrained("lllyasviel/ControlNet")
+    midas_detector = MidasDetector.from_pretrained(midas_model)
 
     return pipeline, midas_detector
