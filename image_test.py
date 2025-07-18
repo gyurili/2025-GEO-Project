@@ -26,32 +26,32 @@ if __name__ == "__main__":
         logger.debug("🛠️ 이미지 생성기 시작")
         image_generator = ImgGenPipeline()  # 클래스 변수 선언
 
-        # image_dict1 = image_generator.generate_image(
-        #     product=product,
-        #     image_path=image_path,
-        #     seed=41
-        # )
-        # if image_dict1["image"]:
-        #     logger.info("✅ 최종 이미지 생성 완료")
-        # else:
-        #     logger.error("❌ 최종 이미지 생성 실패")
-
-        image_dict2 = image_generator.generate_vton(
-            product['model_image_path'],
-            product['ip_image_path'],
-            product['mask_image_path'],
-            seed=1,
+        image_dict1 = image_generator.generate_image(
+            product=product,
+            image_path=image_path,
+            seed=2,
         )
-        if image_dict2["image"]:
+        if image_dict1["image"]:
             logger.info("✅ 최종 이미지 생성 완료")
         else:
             logger.error("❌ 최종 이미지 생성 실패")
+
+        # image_dict2 = image_generator.generate_vton(
+        #     product['model_image_path'],
+        #     product['ip_image_path'],
+        #     product['mask_image_path'],
+        #     seed=42,
+        # )
+        # if image_dict2["image"]:
+        #     logger.info("✅ 최종 이미지 생성 완료")
+        # else:
+        #     logger.error("❌ 최종 이미지 생성 실패")
 
 
         # # ----------------------------------------------
         # # 2. 이미지 누끼 따기 및 마스크 만들기용
         # img_loader = ImageLoader()
-        # img, filename = img_loader.load_image("/home/user/2025-GEO-Project/backend/data/input/andrew-heald-Da7luWG-oGQ-unsplash.jpg")
+        # img, filename = img_loader.load_image("/home/user/2025-GEO-Project/backend/data/input/female_model.avif")
         # bg_handler = BackgroundHandler()
         # processed_image, save_path = bg_handler.remove_background(
         #     input_image=img,

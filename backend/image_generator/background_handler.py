@@ -173,7 +173,6 @@ class BackgroundHandler:
             logger.error(f"❌ 마스크 생성 중 오류 발생: {e}")
             return None
 
-
     def add_image_background(
             self, 
             foreground_image: Image.Image, 
