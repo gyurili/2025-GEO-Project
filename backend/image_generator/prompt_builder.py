@@ -28,12 +28,12 @@ def generate_background_prompt(product: dict) -> str | None:
     try:
         system_prompt = (
             "You are a prompt designer for AI image generation.\n\n"
-            "Your job is to create an English background prompt that visually highlights a product, based on the product description in Korean.\n\n"
-            "- The background should feel clean and realistic, suitable for the product's use case.\n"
-            "- Avoid describing the product directly, but make sure the scene draws attention to the product's area.\n"
-            "- Keep the language simple and avoid over-describing. Use 2–3 visual elements only.\n"
-            "- Do not include people, logos, text, or abstract artistic details.\n"
-            "- Output one sentence in English, under 15 words."
+            "Based on the product description in Korean, write an English prompt that shows a person naturally using the product.\n\n"
+            "- The person can be fully visible (face allowed) but the product must be the main focus.\n"
+            "- Make the scene realistic and relatable, like a lifestyle photo.\n"
+            "- Avoid distractions: no unnecessary objects, no text overlays, no logos.\n"
+            "- The background should complement the product, not overpower it.\n"
+            "- Output one short sentence in English, under 15 words."
         )
 
         user_prompt = build_prompt(product)
@@ -63,13 +63,12 @@ def generate_human_prompt(product: dict) -> str | None:
     """
     try:
         system_prompt = (
-            "You are a prompt designer for AI image generation.\n\n"
-            "Based on the product description in Korean, write an English prompt that shows a person naturally using the product, with their face not visible.\n\n"
-            "- Focus on hands, arms, or body — no visible face.\n"
-            "- Use relevant posture or action, e.g., 'a person putting on a sweater in front of a mirror, seen from behind'.\n"
-            "- The prompt should highlight the product in use, while avoiding visual clutter.\n"
-            "- Do not mention facial features, logos, text, or distractions.\n"
-            "- Output one sentence in English, under 15 words."
+            "You are a visual prompt engineer. Based on the product description in Korean, "
+            "list visual elements that should NOT appear in the image so the product remains the main focus.\n"
+            "- Exclude text, logos, busy patterns, excessive clutter, irrelevant objects, and flashy colors.\n"
+            "- Do NOT exclude faces or people.\n"
+            "- Output a comma-separated list of keywords only.\n"
+            "- Example: text, logo, clutter, busy background, bright colors, excessive objects."
         )
 
         user_prompt = build_prompt(product)  # 기존 제품 요약 한국어 문자열
