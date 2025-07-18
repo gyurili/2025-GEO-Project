@@ -19,51 +19,47 @@ TODO: 전체 리팩토링
 logger = get_logger(__name__)
 
 class ImgGenPipeline:
-    def __init__(self, seed: int = 42):
+    def __init__(self):
         logger.debug("🛠️ 이미지 생성기 파이프라인 초기화 시작")
-
-        self.seed = seed
-        logger.info(f"랜덤 시드: {self.seed}")
-        self.generator = torch.manual_seed(self.seed)
 
         # 유틸리티 초기화
         self.image_loader = ImageLoader()
         self.background_handler = BackgroundHandler()
 
-        # Diffusion 모델 파이프라인 로드
-        logger.info("🛠️ Diffusion Pipeline 로딩 시작")
-        self.diffusion_pipeline = get_model_pipeline(
-            model_id="SG161222/RealVisXL_V4.0", 
-            model_type="diffusion_text2img",
-            use_ip_adapter=True,
-            ip_adapter_config={
-                "repo_id": "h94/IP-Adapter",
-                "subfolder": "sdxl_models",
-                "weight_name": "ip-adapter_sdxl.bin",
-                "scale": 0.66
-            }
-        )
-        logger.info("✅ Diffusion Pipeline 로딩 완료")
-
-        # # VTON 파이프라인 로드
-        # logger.debug("🛠️ VTON 파이프라인 및 MidasDetector 로딩 시작")
-        # self.vton_pipeline, self.midas_detector = get_vton_pipeline(
-        #     pipeline_model="diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
-        #     vae_model="madebyollin/sdxl-vae-fp16-fix",
-        #     controlnet_model="diffusers/controlnet-depth-sdxl-1.0",
-        #     midas_model="lllyasviel/ControlNet",
+        # # Diffusion 모델 파이프라인 로드
+        # logger.info("🛠️ Diffusion Pipeline 로딩 시작")
+        # self.diffusion_pipeline = get_model_pipeline(
+        #     model_id="SG161222/RealVisXL_V5.0", 
+        #     model_type="diffusion_text2img",
+        #     use_ip_adapter=True,
         #     ip_adapter_config={
         #         "repo_id": "h94/IP-Adapter",
         #         "subfolder": "sdxl_models",
         #         "weight_name": "ip-adapter_sdxl.bin",
-        #         "scale": 0.75
-        #     },
-        #     lora_config={
-        #         "repo_id": "Norod78/weird-fashion-show-outfits-sdxl-lora",
-        #         "weight_name": "sdxl-WeirdOutfit-Dreambooh.safetensors"
-        #     },
+        #         "scale": 0.66
+        #     }
         # )
-        # logger.info("✅ VTON 파이프라인 및 MidasDetector 로딩 완료")
+        # logger.info("✅ Diffusion Pipeline 로딩 완료")
+
+        # VTON 파이프라인 로드
+        logger.debug("🛠️ VTON 파이프라인 및 MidasDetector 로딩 시작")
+        self.vton_pipeline, self.midas_detector = get_vton_pipeline(
+            pipeline_model="diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+            vae_model="madebyollin/sdxl-vae-fp16-fix",
+            controlnet_model="diffusers/controlnet-depth-sdxl-1.0",
+            midas_model="lllyasviel/ControlNet",
+            ip_adapter_config={
+                "repo_id": "h94/IP-Adapter",
+                "subfolder": "sdxl_models",
+                "weight_name": "ip-adapter_sdxl.bin",
+                "scale": 0.75
+            },
+            lora_config={
+                "repo_id": "Norod78/weird-fashion-show-outfits-sdxl-lora",
+                "weight_name": "sdxl-WeirdOutfit-Dreambooh.safetensors"
+            },
+        )
+        logger.info("✅ VTON 파이프라인 및 MidasDetector 로딩 완료")
 
         logger.info("✅ 이미지 생성기 파이프라인 초기화 완료")
     
@@ -72,6 +68,7 @@ class ImgGenPipeline:
             image_path: str,
             prompt_mode: str = "human",
             output_dir: str = "./backend/data/output/",
+            seed: int = 42,
         ) -> dict:
         logger.debug("🛠️ generate_image() 시작")
 
@@ -107,6 +104,9 @@ class ImgGenPipeline:
             # logger.warning("⚠️ processed_image를 RGB로 변환")
             processed_image = processed_image.convert("RGB")
 
+        logger.info(f"랜덤 시드: {seed}")
+        generator = torch.manual_seed(seed)
+
         # 4. 이미지 생성
         logger.debug("🛠️ 모델 파이프라인으로 이미지 생성 시작")
         try:
@@ -118,7 +118,7 @@ class ImgGenPipeline:
                 num_inference_steps=99,
                 guidance_scale=7.5,
                 num_images_per_prompt=1,
-                generator=self.generator,
+                generator=generator,
             ).images[0]
             logger.info("✅ 이미지 생성 성공")
         except Exception as e:
@@ -139,6 +139,7 @@ class ImgGenPipeline:
         ip_image_path: str, 
         mask_image_path: str, 
         output_dir="./backend/data/output",
+        seed: int = 42,
         ) -> dict:
         logger.debug("🛠️ generate_vton() 시작")
 
@@ -164,6 +165,9 @@ class ImgGenPipeline:
         logger.debug("🛠️ Depth 제어 이미지 생성 시작")
         depth_image = self.midas_detector(model_image).resize((512, 768)).convert("RGB")
 
+        logger.info(f"랜덤 시드: {seed}")
+        generator = torch.manual_seed(seed)
+
         # 3. VTON 실행
         logger.debug("🛠️ vton 파이프라인 실행 시작")
         result_image = self.vton_pipeline(
@@ -186,7 +190,7 @@ class ImgGenPipeline:
             strength=0.99,
             guidance_scale=7.5,
             num_inference_steps=100,
-            generator=self.generator
+            generator=generator
         ).images[0]
         logger.info("✅ 이미지 생성 완료")
 
