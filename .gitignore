@@ -228,10 +228,15 @@ downloads/
 output/
 result/
 /local_models/
-backend/models/adapter/*
+backend/models/*
 !backend/models/adapter/.gitkeep
+!backend/models/model_handler.py
 Gukbap-Qwen2.5-7B/
-
+backend/models/controlnet-depth-sdxl-1.0/*
+backend/models/RealVisXL_V4.0/*
+backend/models/sdxl-vae-fp16-fix/*
+backend/models/stable-diffusion-xl-1.0-inpainting-0.1/*
+ys/
 
 # LSP config files
 pyrightconfig.json

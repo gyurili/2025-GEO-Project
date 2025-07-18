@@ -5,12 +5,14 @@ data:
   output_path: /home/ubuntu/2025-GEO-Project/backend/data/output
   result_path: /home/ubuntu/2025-GEO-Project/backend/data/result
 input:
-  name: '123'
-  category: '123123'
-  price: 2000
-  brand: '12321'
-  features: '123'
-  css_type: 1
-  image_path:
-  - backend/data/input/product_0709a9a1237e4868837a3e2c252c422c_0.jpg
-  - backend/data/input/product_4ce27afa5e35446fae214f418a09da7c_1.jpg
+  name: "롤프 남성 정장자켓 수트마이 양복상의"
+  category: "양복"
+  price: 58000
+  brand: "롤프"
+  features: "꼼꼼한 박음질, 고급스러운 원단, 클래식한 디자인"
+  ip_image_path: "backend/data/input/suit.jpg"
+  model_image_path: "backend/data/input/a_man_posing_wearing_a_parakeet_t-shirt_removed_bg.png"
+  mask_image_path: "backend/data/input/a_man_posing_wearing_a_parakeet_t-shirt_mask_upperbody.jpg"
+  css_type: 1 # 1 or 2
+  engine: "openai" # "openai" or "hf"
+

@@ -27,6 +27,7 @@ inline 스타일은 사용하지 말고, 시맨틱 태그와 class명을 활용�
 
 - <div class="product-page">: 전체 상세페이지 컨테이너
 - <h1 class="product-title">: 제품 제목
+- <img class="product-image" src="..." alt="...">: 제품 착용 이미지
 - <p class="product-summary">: 간단한 제품 요약 문장
 - <ul class="product-features">: 제품 주요 특징 리스트
     - <li>단일 특징</li>
