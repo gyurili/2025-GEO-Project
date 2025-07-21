@@ -8,16 +8,17 @@
 openai
 pyyaml
 python-dotenv
-imgkit
 torch
 transformers
 diffusers
 peft
 bitsandbytes
+playwright
 
 rembg
 onnxruntime
 controlnet_aux
+mediapipe
 
 # 이학진
 pymysql

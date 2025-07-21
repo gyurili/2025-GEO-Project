@@ -1,9 +1,9 @@
 settings:
   verbose: false
-  project_root: /home/ubuntu/2025-GEO-Project
+  project_root:
 data:
-  output_path: /home/ubuntu/2025-GEO-Project/backend/data/output
-  result_path: /home/ubuntu/2025-GEO-Project/backend/data/result
+  output_path: backend/data/output
+  result_path: backend/data/result
 
 db_config:
   "host": ""
@@ -17,7 +17,7 @@ input:
   price: 58000
   brand: "롤프"
   features: "꼼꼼한 박음질, 고급스러운 원단, 클래식한 디자인"
-  image_path_list: ["backend/data/input/suit.jpg"]
+  image_path_list: ["backend/data/input/suit.png"]
   css_type: 1 # 1 or 2
   engine: "openai" # "openai" or "hf"
 
