@@ -12,6 +12,13 @@ import threading
 import signal
 from pathlib import Path
 
+# 로거 임포트
+sys.path.append(str(Path(__file__).parent))
+from utils.logger import get_logger
+
+# 로거 설정
+logger = get_logger(__name__)
+
 # 프로젝트 루트 디렉토리 설정
 PROJECT_ROOT = Path(__file__).parent
 BACKEND_DIR = PROJECT_ROOT / "backend"
@@ -22,23 +29,27 @@ processes = []
 
 def signal_handler(signum, frame):
     """시그널 핸들러 - 프로세스 종료"""
-    print("\n🛑 종료 신호를 받았습니다. 서버를 종료합니다...")
+    logger.debug("🛠️ 시그널 핸들러 호출됨")
+    logger.info("🛑 종료 신호를 받았습니다. 서버를 종료합니다...")
     
-    for process in processes:
+    for i, process in enumerate(processes):
+        logger.debug(f"🛠️ 프로세스 {i+1} 종료 시작")
         try:
             process.terminate()
             process.wait(timeout=5)
+            logger.debug(f"🛠️ 프로세스 {i+1} 정상 종료됨")
         except subprocess.TimeoutExpired:
+            logger.warning(f"⚠️ 프로세스 {i+1} 강제 종료")
             process.kill()
         except Exception as e:
-            print(f"프로세스 종료 중 오류: {e}")
+            logger.error(f"❌ 프로세스 {i+1} 종료 중 오류: {e}")
     
-    print("✅ 모든 서버가 종료되었습니다.")
+    logger.info("✅ 모든 서버가 종료되었습니다.")
     sys.exit(0)
 
 def check_requirements():
     """필수 패키지 설치 확인"""
-    print("📦 필수 패키지 확인 중...")
+    logger.debug("🛠️ 필수 패키지 확인 시작")
     
     try:
         import fastapi
@@ -47,16 +58,16 @@ def check_requirements():
         import yaml
         import PIL
         import requests
-        print("✅ 모든 필수 패키지가 설치되어 있습니다.")
+        logger.info("✅ 모든 필수 패키지가 설치되어 있습니다.")
         return True
     except ImportError as e:
-        print(f"❌ 필수 패키지가 누락되었습니다: {e}")
-        print("다음 명령으로 설치하세요: pip install -r requirements.txt")
+        logger.error(f"❌ 필수 패키지가 누락되었습니다: {e}")
+        logger.error("다음 명령으로 설치하세요: pip install -r requirements.txt")
         return False
 
 def create_directories():
     """필요한 디렉토리 생성"""
-    print("📁 디렉토리 구조 생성 중...")
+    logger.debug("🛠️ 디렉토리 구조 생성 시작")
     
     directories = [
         PROJECT_ROOT / "backend" / "data",
@@ -65,62 +76,76 @@ def create_directories():
         PROJECT_ROOT / "backend" / "data" / "result"
     ]
     
+    created_count = 0
     for directory in directories:
-        directory.mkdir(exist_ok=True)
-        print(f"   📂 {directory}")
+        if not directory.exists():
+            directory.mkdir(parents=True, exist_ok=True)
+            created_count += 1
+            logger.debug(f"🛠️ 디렉토리 생성: {directory}")
+        else:
+            logger.debug(f"🛠️ 기존 디렉토리 확인: {directory}")
     
-    print("✅ 디렉토리 구조 생성 완료")
+    logger.info(f"✅ 디렉토리 구조 생성 완료 (생성: {created_count}개)")
 
 def start_fastapi_server():
     """FastAPI 서버 시작"""
-    print("🚀 FastAPI 서버 시작 중...")
+    logger.debug("🛠️ FastAPI 서버 시작 준비")
     
     try:
         # 백엔드 디렉토리에서 서버 실행
         env = os.environ.copy()
         env['PYTHONPATH'] = str(PROJECT_ROOT)
         
+        logger.debug(f"🛠️ 환경변수 PYTHONPATH 설정: {PROJECT_ROOT}")
+        logger.debug(f"🛠️ 작업 디렉토리: {BACKEND_DIR}")
+        
         process = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8010"],
+            [sys.executable, "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8010", "--reload"],
             cwd=BACKEND_DIR,
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             universal_newlines=True
         )
-        
+
         processes.append(process)
+        logger.debug("🛠️ FastAPI 프로세스가 프로세스 리스트에 추가됨")
         
         # 서버 로그 출력
         def log_output():
+            logger.debug("🛠️ FastAPI 로그 출력 스레드 시작")
             for line in iter(process.stdout.readline, ''):
                 if line.strip():
-                    print(f"[FastAPI] {line.strip()}")
+                    logger.debug(f"[FastAPI] {line.strip()}")
         
         threading.Thread(target=log_output, daemon=True).start()
         
         # 서버 시작 대기
+        logger.debug("🛠️ FastAPI 서버 시작 대기 중...")
         time.sleep(3)
         
         if process.poll() is None:
-            print("✅ FastAPI 서버가 시작되었습니다. (http://localhost:8010)")
+            logger.info("✅ FastAPI 서버가 시작되었습니다. (http://localhost:8010)")
             return True
         else:
-            print("❌ FastAPI 서버 시작 실패")
+            logger.error("❌ FastAPI 서버 시작 실패")
             return False
             
     except Exception as e:
-        print(f"❌ FastAPI 서버 시작 중 오류: {e}")
+        logger.error(f"❌ FastAPI 서버 시작 중 오류: {e}")
         return False
 
 def start_streamlit_app():
     """Streamlit 앱 시작"""
-    print("🎨 Streamlit 앱 시작 중...")
+    logger.debug("🛠️ Streamlit 앱 시작 준비")
     
     try:
         # 프론트엔드 디렉토리에서 앱 실행
         env = os.environ.copy()
         env['PYTHONPATH'] = str(PROJECT_ROOT)
+        
+        logger.debug(f"🛠️ 환경변수 PYTHONPATH 설정: {PROJECT_ROOT}")
+        logger.debug(f"🛠️ 작업 디렉토리: {FRONTEND_DIR}")
         
         process = subprocess.Popen(
             [sys.executable, "-m", "streamlit", "run", "home.py", 
@@ -134,58 +159,65 @@ def start_streamlit_app():
         )
         
         processes.append(process)
+        logger.debug("🛠️ Streamlit 프로세스가 프로세스 리스트에 추가됨")
         
         # 앱 로그 출력
         def log_output():
+            logger.debug("🛠️ Streamlit 로그 출력 스레드 시작")
             for line in iter(process.stdout.readline, ''):
                 if line.strip():
-                    print(f"[Streamlit] {line.strip()}")
+                    logger.debug(f"[Streamlit] {line.strip()}")
         
         threading.Thread(target=log_output, daemon=True).start()
         
         # 앱 시작 대기
+        logger.debug("🛠️ Streamlit 앱 시작 대기 중...")
         time.sleep(5)
         
         if process.poll() is None:
-            print("✅ Streamlit 앱이 시작되었습니다. (http://localhost:8501)")
+            logger.info("✅ Streamlit 앱이 시작되었습니다. (http://localhost:8501)")
             return True
         else:
-            print("❌ Streamlit 앱 시작 실패")
+            logger.error("❌ Streamlit 앱 시작 실패")
             return False
             
     except Exception as e:
-        print(f"❌ Streamlit 앱 시작 중 오류: {e}")
+        logger.error(f"❌ Streamlit 앱 시작 중 오류: {e}")
         return False
 
 def check_server_health():
     """서버 상태 확인"""
-    print("🔍 서버 상태 확인 중...")
+    logger.debug("🛠️ 서버 상태 확인 시작")
     
     try:
         import requests
         
         # FastAPI 서버 상태 확인
+        logger.debug("🛠️ FastAPI 서버 헬스체크 요청")
         response = requests.get("http://localhost:8010/health", timeout=5)
         if response.status_code == 200:
-            print("✅ FastAPI 서버 정상 작동 중")
+            logger.info("✅ FastAPI 서버 정상 작동 중")
         else:
-            print(f"⚠️ FastAPI 서버 상태 이상: {response.status_code}")
+            logger.warning(f"⚠️ FastAPI 서버 상태 이상: HTTP {response.status_code}")
             
     except Exception as e:
-        print(f"⚠️ 서버 상태 확인 실패: {e}")
+        logger.warning(f"⚠️ 서버 상태 확인 실패: {e}")
 
 def main():
     """메인 실행 함수"""
-    print("=" * 60)
-    print("🛍️  GeoPage Input Handler 시작")
-    print("=" * 60)
+    logger.debug("🛠️ 메인 함수 시작")
+    logger.info("=" * 60)
+    logger.info("🛍️  GeoPage Input Handler 시작")
+    logger.info("=" * 60)
     
     # 시그널 핸들러 등록
+    logger.debug("🛠️ 시그널 핸들러 등록")
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
     
     # 1. 필수 패키지 확인
     if not check_requirements():
+        logger.error("❌ 필수 패키지 확인 실패로 종료")
         sys.exit(1)
     
     # 2. 디렉토리 생성
@@ -193,34 +225,36 @@ def main():
     
     # 3. FastAPI 서버 시작
     if not start_fastapi_server():
-        print("❌ FastAPI 서버 시작 실패")
+        logger.error("❌ FastAPI 서버 시작 실패로 종료")
         sys.exit(1)
     
     # 4. Streamlit 앱 시작
     if not start_streamlit_app():
-        print("❌ Streamlit 앱 시작 실패")
+        logger.error("❌ Streamlit 앱 시작 실패로 종료")
         sys.exit(1)
     
     # 5. 서버 상태 확인
+    logger.debug("🛠️ 서버 상태 확인 대기")
     time.sleep(2)
     check_server_health()
     
     # 6. 사용자 안내
-    print("\n" + "=" * 60)
-    print("🎉 모든 서비스가 성공적으로 시작되었습니다!")
-    print("=" * 60)
-    print("📱 Streamlit 앱: http://localhost:8501")
-    print("🔧 FastAPI 문서: http://localhost:8010/docs")
-    print("💡 상태 확인: http://localhost:8010/health")
-    print("=" * 60)
-    print("종료하려면 Ctrl+C를 누르세요.")
-    print("=" * 60)
+    logger.info("\n" + "=" * 60)
+    logger.info("🎉 모든 서비스가 성공적으로 시작되었습니다!")
+    logger.info("=" * 60)
+    logger.info("📱 Streamlit 앱: http://localhost:8501")
+    logger.info("🔧 FastAPI 문서: http://localhost:8010/docs")
+    logger.info("💡 상태 확인: http://localhost:8010/health")
+    logger.info("=" * 60)
+    logger.info("종료하려면 Ctrl+C를 누르세요.")
+    logger.info("=" * 60)
     
     # 7. 무한 대기
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
+        logger.debug("🛠️ KeyboardInterrupt 감지")
         signal_handler(signal.SIGINT, None)
 
 if __name__ == "__main__":

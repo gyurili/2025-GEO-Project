@@ -57,7 +57,7 @@ def get_db_config() -> dict:
     if "host" in cfg:
         if host_from_env:
             cfg["host"] = host_from_env
-            logger.info("✅ DB 호스트를 .env에서 성공적으로 불러옴")
+            logger.info(f"✅ DB 호스트를 .env에서 성공적으로 불러옴: {host_from_env}")
         else:
             logger.warning("⚠️ .env에 DB_HOST가 존재하지 않아 config.yaml의 값 사용")
     else:
