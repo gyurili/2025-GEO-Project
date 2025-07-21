@@ -10,6 +10,7 @@ from utils.logger import get_logger
 from .image_loader import ImageLoader
 from .background_handler import BackgroundHandler
 from .prompt_builder import generate_prompts
+from .hash_utils import generate_cache_key
 from backend.models.model_handler import get_model_pipeline, get_vton_pipeline
 
 '''
@@ -45,14 +46,14 @@ class ImgGenPipeline:
         try:
             logger.info("🛠️ Diffusion Pipeline 로딩 시작")
             self.diffusion_pipeline = get_model_pipeline(
-                model_id="SG161222/RealVisXL_V5.0",
+                model_id="SG161222/RealVisXL_V5.0", # ""
                 model_type="diffusion_text2img",
                 use_ip_adapter=True,
                 ip_adapter_config={
                     "repo_id": "h94/IP-Adapter",
                     "subfolder": "sdxl_models",
                     "weight_name": "ip-adapter_sdxl.bin",
-                    "scale": 0.66
+                    "scale": 0.7
                 }
             )
             logger.info("✅ Diffusion Pipeline 로딩 완료")
@@ -112,6 +113,16 @@ class ImgGenPipeline:
         result = {"image": None, "image_path": None}
 
         try:
+            # 0. 캐시 체크
+            cache_key = generate_cache_key(product, image_path, prompt_mode, seed)
+            name_without_ext, _ = os.path.splitext(os.path.basename(image_path))
+            os.makedirs(output_dir, exist_ok=True)
+            save_path = os.path.join(output_dir, f"{cache_key}_{name_without_ext}.png")
+
+            if os.path.exists(save_path):
+                logger.info(f"✅ 캐시 이미지 존재 확인: {save_path}")
+                return {"image": Image.open(save_path), "image_path": save_path}
+
             # 1. 이미지 로더
             logger.debug(f"🛠️ 이미지 로드 시작")
             loaded_image, filename = self.image_loader.load_image(image_path=image_path, target_size=None)
@@ -122,7 +133,7 @@ class ImgGenPipeline:
 
             # 2. 배경 제거
             logger.debug(f"🛠️ 배경 제거 시작")
-            processed_image, save_path = self.background_handler.remove_background(
+            processed_image, _ = self.background_handler.remove_background(
                 input_image=loaded_image,
                 original_filename=filename,
             )
@@ -173,9 +184,6 @@ class ImgGenPipeline:
                 logger.error(f"❌ 이미지 생성 중 에러 발생: {e}")
                 return result
 
-            os.makedirs(output_dir, exist_ok=True)
-            name_without_ext, _ = os.path.splitext(filename)
-            save_path = os.path.join(output_dir, f"{name_without_ext}_gen.png")
             result_image.save(save_path)
             logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
 

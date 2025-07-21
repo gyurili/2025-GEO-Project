@@ -29,7 +29,7 @@ if __name__ == "__main__":
         image_dict1 = image_generator.generate_image(
             product=product,
             image_path=image_path,
-            seed=2,
+            seed=42,
         )
         if image_dict1["image"]:
             logger.info("✅ 최종 이미지 생성 완료")
