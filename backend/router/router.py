@@ -11,16 +11,19 @@ from backend.text_generator.text_generator_main import text_generator_main
 from backend.page_generator.page_generator_main import page_generator_main
 
 logger = get_logger(__name__)
-app = FastAPI()
 
-input_router = APIRouter(prefix="/input")
+process_router = APIRouter(prefix="/process")
 image_router = APIRouter(prefix="/image")
 output_router = APIRouter(prefix="/output")
 
 img_gen_pipeline = ImgGenPipeline()
 
 # ---- 1. input 라우터: 차별점+후보이미지 ----
-@input_router.post("/")
+@process_router.post(
+    "/analyze-product",
+    summary="상품 분석 및 이미지 생성",
+    description="상품 정보를 받아 경쟁사 리뷰 분석 및 차별점 도출, 그리고 후보 이미지(최대 2개) 생성을 병렬로 처리합니다."
+)
 async def receive_product_info(
     product: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
@@ -56,7 +59,11 @@ async def receive_product_info(
         return {"success": False, "error": str(e)}
 
 # ---- 2. image 라우터: 후보 이미지 확인/선택 ----
-@image_router.get("/")
+@image_router.get(
+    "/candidates",
+    summary="후보 이미지 목록 조회",
+    description="이미 분석된 상품 데이터에서 생성된 후보 이미지 리스트를 반환합니다. 항상 2개씩 중첩 리스트로 반환됩니다."
+)
 async def get_candidate_images(
     product: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
@@ -71,7 +78,11 @@ async def get_candidate_images(
     logger.info("✅ 후보 이미지 반환")
     return {"success": True, "candidate_images": candidates}
 
-@image_router.post("/")
+@image_router.post(
+    "/select-image",
+    summary="후보 이미지 선택",
+    description="사용자가 선택한 이미지 인덱스(1 또는 2)를 상품 딕셔너리에 반영합니다. 선택값은 Form 형식으로 받습니다."
+)
 async def select_image(
     product: Dict[str, Any] = Body(...),
     selection: int = Form(...)
@@ -94,7 +105,11 @@ async def select_image(
     return product
 
 # ---- 3. output 라우터: 상세페이지 생성 ----
-@output_router.post("/")
+@output_router.post(
+    "/create-page",
+    summary="상세페이지 생성",
+    description="선택된 이미지 및 분석 데이터를 기반으로 텍스트 생성과 HTML 상세페이지를 생성하며, session_id를 반환합니다."
+)
 async def generate_detail_page(
     product: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
@@ -113,7 +128,11 @@ async def generate_detail_page(
         logger.error(f"❌ generate_detail_page 예외: {e}")
         return {"success": False, "error": str(e)}
 
-@output_router.get("/")
+@output_router.get(
+    "/path",
+    summary="생성된 상세페이지 경로 조회",
+    description="session_id를 통해 생성된 상세페이지의 HTML과 PNG 파일 경로를 반환합니다."
+)
 async def get_detail_page(
     product: Dict[str, Any] = Body(...)
 ):
@@ -134,7 +153,11 @@ async def get_detail_page(
         "image_path": image_path
     }
 
-@output_router.get("/download")
+@output_router.get(
+    "/download",
+    summary="상세페이지 파일 다운로드",
+    description="session_id와 파일 타입(html 또는 png)을 기반으로 생성된 상세페이지 결과물을 다운로드합니다."
+)
 async def download_detail_file(
     product: Dict[str, Any] = Body(...),
     file_type: str = Query(..., description="html 또는 png")
@@ -149,8 +172,3 @@ async def download_detail_file(
     if not os.path.isfile(file_path):
         return JSONResponse({"success": False, "error": f"{file_type} 파일 없음"}, status_code=404)
     return FileResponse(file_path, filename=os.path.basename(file_path))
-
-# ---- 앱 라우터 등록 ----
-app.include_router(input_router)
-app.include_router(image_router)
-app.include_router(output_router)
