@@ -174,7 +174,7 @@ class ImgGenPipeline:
                     ip_adapter_image=processed_image,          # IP-Adapter 입력 이미지 (제품 구조, 색상, 특징 반영) → 유사성 높임
                     width=1024,                                # 출력 이미지 가로 크기 (해상도 ↑ 시 품질 ↑, VRAM ↑, 속도 ↓)
                     height=1024,                               # 출력 이미지 세로 크기 (동일하게 해상도 영향)
-                    num_inference_steps=99,                    # 디퓨전 스텝 수 (높을수록 디테일 ↑, 속도 ↓, VRAM ↑) → 권장 30~50
+                    num_inference_steps=50,                    # 디퓨전 스텝 수 (높을수록 디테일 ↑, 속도 ↓, VRAM ↑) → 권장 30~50
                     guidance_scale=7,                          # 프롬프트 강조 강도 (높으면 프롬프트 반영 ↑, 낮으면 창의성 ↑), 너무 높으면 비현실적 아티팩트 발생 가능 (보통 5~8)
                     num_images_per_prompt=1,                   # 한 번의 추론에서 생성할 이미지 개수 (↑시 VRAM 부담 커짐)
                     generator=generator,                       # 랜덤 시드 고정 (재현성 확보) → 동일 설정 시 항상 같은 이미지 생성
