@@ -211,7 +211,7 @@ def get_model_pipeline(
                 "repo_id": "h94/IP-Adapter",
                 "subfolder": "sdxl_models",
                 "weight_name": "ip-adapter_sdxl.bin",
-                "scale": 0.8,
+                "scale": 0.7,
             }
             model_pipeline.load_ip_adapter(
                 adapter_config["repo_id"],
@@ -220,6 +220,7 @@ def get_model_pipeline(
             )
             model_pipeline.set_ip_adapter_scale(adapter_config["scale"])
             model_pipeline.enable_vae_tiling()
+            model_pipeline.enable_xformers_memory_efficient_attention()
             logger.info("✅ IP-Adapter 자동 주입 완료")
         except Exception as e:
             logger.warning(f"⚠️ IP-Adapter 자동 주입 실패: {e}")
