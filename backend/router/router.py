@@ -120,7 +120,7 @@ async def generate_detail_page(
     try:
         session_id = text_generator_main(product)
         product["session_id"] = session_id
-        page_generator_main(product, session_id)
+        page_generator_main(product)
         logger.info(f"✅ 상세페이지 생성 완료 (session_id={session_id})")
         return product
     except Exception as e:
