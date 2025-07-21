@@ -1,10 +1,9 @@
 settings:
   verbose: false
-  project_root: ""
-
+  project_root: /home/ubuntu/2025-GEO-Project
 data:
-  output_path: backend/data/output
-  result_path: backend/data/result
+  output_path: /home/ubuntu/2025-GEO-Project/backend/data/output
+  result_path: /home/ubuntu/2025-GEO-Project/backend/data/result
 
 db_config:
   "host": ""
@@ -21,3 +20,4 @@ input:
   image_path_list: ["backend/data/input/suit.jpg"]
   css_type: 1 # 1 or 2
   engine: "openai" # "openai" or "hf"
+
