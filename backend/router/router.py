@@ -13,14 +13,14 @@ from backend.page_generator.page_generator_main import page_generator_main
 logger = get_logger(__name__)
 app = FastAPI()
 
-input_router = APIRouter(prefix="/input")
+process_router = APIRouter(prefix="/process")
 image_router = APIRouter(prefix="/image")
 output_router = APIRouter(prefix="/output")
 
 img_gen_pipeline = ImgGenPipeline()
 
 # ---- 1. input 라우터: 차별점+후보이미지 ----
-@input_router.post("/")
+@process_router.post("/analyze-product")
 async def receive_product_info(
     product: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
@@ -56,7 +56,7 @@ async def receive_product_info(
         return {"success": False, "error": str(e)}
 
 # ---- 2. image 라우터: 후보 이미지 확인/선택 ----
-@image_router.get("/")
+@image_router.get("/candidates")
 async def get_candidate_images(
     product: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
@@ -71,7 +71,7 @@ async def get_candidate_images(
     logger.info("✅ 후보 이미지 반환")
     return {"success": True, "candidate_images": candidates}
 
-@image_router.post("/")
+@image_router.post("/select-image")
 async def select_image(
     product: Dict[str, Any] = Body(...),
     selection: int = Form(...)
@@ -94,7 +94,7 @@ async def select_image(
     return product
 
 # ---- 3. output 라우터: 상세페이지 생성 ----
-@output_router.post("/")
+@output_router.post("/create-page")
 async def generate_detail_page(
     product: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
@@ -113,7 +113,7 @@ async def generate_detail_page(
         logger.error(f"❌ generate_detail_page 예외: {e}")
         return {"success": False, "error": str(e)}
 
-@output_router.get("/")
+@output_router.get("/path")
 async def get_detail_page(
     product: Dict[str, Any] = Body(...)
 ):
@@ -151,6 +151,6 @@ async def download_detail_file(
     return FileResponse(file_path, filename=os.path.basename(file_path))
 
 # ---- 앱 라우터 등록 ----
-app.include_router(input_router)
+app.include_router(process_router)
 app.include_router(image_router)
 app.include_router(output_router)
