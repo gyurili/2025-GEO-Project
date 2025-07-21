@@ -98,7 +98,7 @@ def storytelling_prompt():
             1) 고객의 문제를 공감하고 브랜드가 해결책을 찾았음을 선언하는 임팩트 있는 헤드라인 (예: "{브랜드명}이 해결책을 드립니다")
             2) 브랜드의 가치와 철학을 설명하는 본문 2~3문단
             3) 고객이 신뢰할 수 있는 강점을 강조한 포인트박스 2개
-        - 오른쪽에는 제품 대표 이미지 1장을 포함 (`rounded-xl`, `shadow-xl`, `mx-auto`, `max-w-sm` 등으로 스타일 지정)
+        - 오른쪽에는 제품 이미지 1장을 포함 (`rounded-xl`, `shadow-xl`, `mx-auto`, `max-w-sm` 등으로 스타일 지정)
     4. Product Section (제품 특징)
         - 리스트 전체는 <ul class="grid md:grid-cols-3 gap-10 max-w-6xl mx-auto text-gray-800">로 감싸고, 각 항목은 <li class="bg-white p-6 rounded-xl shadow-lg">로 구성
         - 특징 이름(소제목)은 <blockquote class="text-xl font-semibold mb-3 text-blue-700"> 형식으로 강조, 설명은 그 아래 <p> 태그로 자연스럽게 이어서 작성
