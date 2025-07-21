@@ -46,3 +46,4 @@ python-multipart
 peft
 controlnet_aux
 basicsr
+xformers
