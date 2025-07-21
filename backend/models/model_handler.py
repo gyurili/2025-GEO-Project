@@ -9,6 +9,7 @@ from diffusers import (
     StableDiffusionPipeline,
     AutoencoderKL
 )
+from controlnet_aux import MidasDetector
 from peft import PeftModel
 from utils.logger import get_logger
 
@@ -28,7 +29,7 @@ MODEL_LOADERS = {
 def download_model(
         model_id: str, 
         model_type: str = "diffusion_text2img",
-        save_dir: str = "/home/user/2025-GEO-Project/backend/models",
+        save_dir: str = "./backend/models",
         use_4bit: bool = False
     ):
     """
@@ -40,7 +41,7 @@ def download_model(
         model_id (str): Hugging Face 모델 ID (예: "stabilityai/stable-diffusion-xl-base-1.0").
         model_type (str): 모델 유형 (예: "diffusion_text2img", "causal_lm", "encoder" 등).
         save_dir (str, optional): 모델을 저장할 기본 디렉토리 경로.
-                                  기본값은 "/home/user/2025-GEO-Project/backend/models".
+                                  기본값은 "./backend/models".
 
     Returns:
         str: 모델이 저장된 최종 경로. 다운로드 또는 저장에 실패하면 None 반환.
@@ -152,7 +153,7 @@ def get_model_pipeline(
         ip_adapter_config: dict = None,
         lora_path: str = None,
         use_4bit: bool = False,
-        save_dir: str = "/home/user/2025-GEO-Project/backend/models"
+        save_dir: str = "./backend/models"
     ):
     """
     Hugging Face 모델을 다운로드 및 로드하여 파이프라인 객체를 반환합니다.
@@ -210,7 +211,7 @@ def get_model_pipeline(
                 "repo_id": "h94/IP-Adapter",
                 "subfolder": "sdxl_models",
                 "weight_name": "ip-adapter_sdxl.bin",
-                "scale": 0.8,
+                "scale": 0.7,
             }
             model_pipeline.load_ip_adapter(
                 adapter_config["repo_id"],
@@ -218,6 +219,8 @@ def get_model_pipeline(
                 weight_name=adapter_config["weight_name"],
             )
             model_pipeline.set_ip_adapter_scale(adapter_config["scale"])
+            model_pipeline.enable_vae_tiling()
+            model_pipeline.enable_xformers_memory_efficient_attention()
             logger.info("✅ IP-Adapter 자동 주입 완료")
         except Exception as e:
             logger.warning(f"⚠️ IP-Adapter 자동 주입 실패: {e}")
@@ -229,6 +232,7 @@ def get_vton_pipeline(
     pipeline_model: str = "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
     vae_model: str = "madebyollin/sdxl-vae-fp16-fix",
     controlnet_model: str = "diffusers/controlnet-depth-sdxl-1.0",
+    midas_model: str = "lllyasviel/ControlNet",
     ip_adapter_config: dict = {
         "repo_id": "h94/IP-Adapter",
         "subfolder": "sdxl_models",
@@ -282,6 +286,10 @@ def get_vton_pipeline(
     logger.debug("🛠️ 구성요소 주입 시작")
     pipeline.controlnet = controlnet
 
+    # 메모리 최적화/ 속도 희생
+    # pipeline.enable_attention_slicing()
+    pipeline.enable_vae_tiling()
+
     # IP-Adapter 적용
     try:
         pipeline.load_ip_adapter(
@@ -304,4 +312,6 @@ def get_vton_pipeline(
     except Exception as e:
         logger.warning(f"⚠️ LoRA 적용 실패: {e}")
 
-    return pipeline
+    midas_detector = MidasDetector.from_pretrained(midas_model)
+
+    return pipeline, midas_detector

@@ -1,6 +1,12 @@
 import re
 from typing import Dict, Any, Optional, List
+import sys
+from pathlib import Path
+
+# 로거 임포트 추가
+sys.path.append(str(Path(__file__).parent.parent.parent))
 from utils.logger import get_logger
+
 from ..schemas.input_schema import ProductInputSchema
 
 # 로거 설정
@@ -64,7 +70,30 @@ class FormParser:
             logger.error(f"❌ 가격 검증 실패: {e}")
             raise ValueError(f"올바른 가격을 입력해주세요: {str(e)}")
     
-    def extract_features(self, features_input: str) -> str:
+    def validate_css_type(self, css_type: Any) -> int:
+        """CSS 타입 유효성 검증"""
+        logger.debug(f"🛠️ CSS 타입 유효성 검증 시작: 입력값={css_type}, 타입={type(css_type)}")
+        
+        try:
+            if isinstance(css_type, str):
+                logger.debug("🛠️ 문자열 CSS 타입 입력 감지, 숫자 변환 시작")
+                css_type = int(css_type.strip())
+                logger.debug(f"🛠️ 문자열 CSS 타입 변환 완료: '{css_type}' -> {css_type}")
+            else:
+                css_type = int(css_type)
+                logger.debug(f"🛠️ 숫자 CSS 타입 변환 완료: {css_type}")
+                
+            # CSS 타입 값 검증
+            if css_type not in [1, 2]:
+                logger.warning(f"⚠️ CSS 타입 범위 오류: {css_type} (1 또는 2만 허용)")
+                raise ValueError("CSS 타입은 1 또는 2만 선택 가능합니다.")
+                
+            logger.info(f"✅ CSS 타입 유효성 검증 완료: {css_type}")
+            return css_type
+            
+        except ValueError as e:
+            logger.error(f"❌ CSS 타입 검증 실패: {e}")
+            raise ValueError(f"올바른 CSS 타입을 선택해주세요: {str(e)}")
         """상품 특징 추출 및 정리"""
         logger.debug(f"🛠️ 상품 특징 추출 시작: 입력 길이={len(features_input) if features_input else 0}")
         
@@ -99,6 +128,24 @@ class FormParser:
             
         logger.info(f"✅ 카테고리 유효성 검증 완료: '{category}'")
         return category
+
+    def extract_features(self, features_input: str) -> str:
+        """상품 특징 추출 및 정리"""
+        logger.debug(f"🛠️ 상품 특징 추출 시작: 입력 길이={len(features_input) if features_input else 0}")
+        
+        if not features_input:
+            logger.debug("🛠️ 빈 특징 입력, 빈 문자열 반환")
+            return ""
+            
+        features = self.clean_text(features_input)
+        
+        # 특징이 너무 길면 자르기
+        if len(features) > 500:
+            logger.warning(f"⚠️ 상품 특징 길이 초과: {len(features)}자 -> 500자로 단축")
+            features = features[:497] + "..."
+            
+        logger.info(f"✅ 상품 특징 추출 완료: {len(features)}자")
+        return features
     
     def validate_brand(self, brand: str) -> str:
         """브랜드 유효성 검증"""
@@ -117,6 +164,35 @@ class FormParser:
             
         logger.info(f"✅ 브랜드 유효성 검증 완료: '{brand}'")
         return brand
+    
+    def validate_image_paths(self, image_paths: Optional[List[str]]) -> Optional[List[str]]:
+        """이미지 경로 유효성 검증 (선택사항)"""
+        logger.debug(f"🛠️ 이미지 경로 유효성 검증 시작: {len(image_paths) if image_paths else 0}개")
+        
+        if not image_paths:
+            logger.debug("🛠️ 이미지 경로 없음 - 선택사항이므로 None 반환")
+            return None
+        
+        if isinstance(image_paths, str):
+            # 단일 문자열인 경우 리스트로 변환
+            logger.debug("🛠️ 단일 이미지 경로를 리스트로 변환")
+            image_paths = [image_paths]
+        
+        # 빈 문자열이나 'temp' 같은 임시 값 제거
+        valid_paths = []
+        for path in image_paths:
+            if path and path.strip() and path != 'temp':
+                valid_paths.append(path.strip())
+                logger.debug(f"🛠️ 유효한 이미지 경로: {path}")
+            else:
+                logger.debug(f"🛠️ 무효한 이미지 경로 제외: {path}")
+        
+        if valid_paths:
+            logger.info(f"✅ 이미지 경로 검증 완료: {len(valid_paths)}개")
+            return valid_paths
+        else:
+            logger.debug("🛠️ 유효한 이미지 경로 없음")
+            return None
     
     def parse_form_data(self, form_data: Dict[str, Any]) -> Dict[str, Any]:
         """폼 데이터 파싱 및 검증"""
@@ -146,28 +222,42 @@ class FormParser:
             logger.debug("🛠️ 브랜드 검증 시작")
             parsed_data['brand'] = self.validate_brand(form_data.get('brand', ''))
             
+            # CSS 타입
+            logger.debug("🛠️ CSS 타입 검증 시작")
+            parsed_data['css_type'] = self.validate_css_type(form_data.get('css_type', 1))
+            
             # 특징
             logger.debug("🛠️ 상품 특징 처리 시작")
             parsed_data['features'] = self.extract_features(form_data.get('features', ''))
             
-            # 이미지 경로 (선택사항)
-            image_path = form_data.get('image_path')
-            if image_path:
-                parsed_data['image_path'] = image_path
-                logger.debug(f"🛠️ 이미지 경로 설정: {image_path}")
+            # 이미지 경로
+            logger.debug("🛠️ 이미지 경로 처리 시작")
+            image_paths = self.validate_image_paths(form_data.get('image_path'))
+            if image_paths:
+                parsed_data['image_path'] = image_paths
+                logger.debug(f"🛠️ 이미지 경로 설정: {len(image_paths)}개")
+            else:
+                logger.debug("🛠️ 이미지 경로 없음 - 선택사항이므로 제외")
             
-            # 상품 링크 (선택사항)
-            product_link = form_data.get('product_link')
-            if product_link:
-                parsed_data['product_link'] = product_link
-                logger.debug(f"🛠️ 상품 링크 설정: {product_link}")
-            
-            # Pydantic 스키마로 최종 검증
+            # Pydantic 스키마로 최종 검증 (이미지 필드 선택사항 처리)
             logger.debug("🛠️ Pydantic 스키마 검증 시작")
-            validated_data = self.schema(**parsed_data)
+            
+            # 이미지 필드가 없으면 빈 리스트로 설정하여 검증
+            validation_data = parsed_data.copy()
+            if 'image_path' not in validation_data:
+                validation_data['image_path'] = []
+                logger.debug("🛠️ 검증용 빈 image_path 설정")
+            
+            validated_data = self.schema(**validation_data)
+            
+            # 검증된 데이터에서 빈 image_path는 제거
+            final_data = validated_data.dict()
+            if 'image_path' in final_data and not final_data['image_path']:
+                del final_data['image_path']
+                logger.debug("🛠️ 빈 image_path 제거")
             
             logger.info("✅ 폼 데이터 파싱 및 검증 완료")
-            return validated_data.dict()
+            return final_data
             
         except Exception as e:
             logger.error(f"❌ 폼 데이터 파싱 실패: {e}")
@@ -185,6 +275,7 @@ class FormParser:
 - 카테고리: {product_data['category']}
 - 브랜드: {product_data['brand']}
 - 가격: {product_data['price']:,}원
+- CSS 타입: {product_data['css_type']}
 - 특징: {product_data['features'][:100]}{'...' if len(product_data['features']) > 100 else ''}
             """.strip()
             
@@ -196,10 +287,9 @@ class FormParser:
                 else:
                     summary += f"\n- 이미지: {product_data['image_path']}"
                     logger.debug("🛠️ 단일 이미지 정보 추가")
-            
-            if product_data.get('product_link'):
-                summary += f"\n- 링크: {product_data['product_link']}"
-                logger.debug("🛠️ 상품 링크 정보 추가")
+            else:
+                summary += "\n- 이미지: 없음"
+                logger.debug("🛠️ 이미지 없음 표시")
                 
             logger.info(f"✅ 상품 데이터 요약 생성 완료: {len(summary)}자")
             return summary

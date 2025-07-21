@@ -4,267 +4,285 @@ import sys
 import datetime
 import torch
 from PIL import Image
+from diffusers.utils import load_image
 
 from utils.logger import get_logger
 from .image_loader import ImageLoader
-from .background_handler import BackgroundHandler, Img2ImgGenerator
+from .background_handler import BackgroundHandler
 from .prompt_builder import generate_prompts
-from .virtual_try_on import run_virtual_tryon
+from .hash_utils import generate_cache_key
 from backend.models.model_handler import get_model_pipeline, get_vton_pipeline
 
 '''
-TODO: 상품명, 카테고리, 특징, 이미지패스, 상품링크, 차별점을 바탕으로 이미지 재구성
-TODO: 이미지를 임시로 데이터 아웃풋에 저장 이후 삭제
+TODO: 전체 리팩토링
 '''
 
 logger = get_logger(__name__)
 
-def image_generator_main(
-    product: dict,
-    image_path: str, 
-    prompt_mode: str = "human",
-    model_id: str = "SG161222/RealVisXL_V4.0",
-    model_type: str = "diffusion_text2img",
-    ip_adapter_scale: float = 0.5,
-    num_inference_steps: int = 99,
-    guidance_scale: float = 7.5,
-    output_dir_path: str = "backend/data/output/",
-    background_image_path: str = None,
-)-> dict | bool:
+class ImgGenPipeline:
     """
-    제품 이미지를 기반으로 AI 이미지 생성 파이프라인을 실행합니다.
+    이미지 생성 및 가상 착용(VTON) 기능을 제공하는 파이프라인 클래스.
 
-    주요 단계:
-    1. 이미지 로드:
-       - 입력 경로(`image_path`)에서 원본 이미지를 로드.
-    2. 배경 제거:
-       - 배경 제거 후 결과 이미지 저장.
-    3. 프롬프트 생성:
-       - 상품 정보를 기반으로 GEO/SEO 최적화된 프롬프트 생성.
-    4. 모델 파이프라인 로드:
-       - Hugging Face에서 지정된 diffusion 모델 로드.
-       - IP-Adapter를 사용하여 참고 이미지 기반 생성 강화.
-    5. 시드 설정:
-       - 생성 시 랜덤성 제어를 위해 시드 설정.
-    6. 이미지 생성:
-       - Img2Img 방식으로 이미지 생성.
-       - 생성된 이미지는 지정 경로에 저장.
-
-    Args:
-        product (dict): 상품명, 카테고리, 특징 등 제품 정보.
-        image_path (str): 입력 이미지 경로.
-        prompt_mode (str): 프롬프트 생성 모드 (기본값: "human").
-        model_id (str): 모델 식별자 (기본값: "SG161222/RealVisXL_V4.0").
-        model_type (str): 모델 타입 (예: "diffusion_text2img").
-        ip_adapter_scale (float): IP-Adapter 적용 강도 (0.0~1.0).
-        num_inference_steps (int): 이미지 생성 시 inference 스텝 수.
-        guidance_scale (float): CFG 스케일 (프롬프트 준수 정도).
-        output_dir_path (str): 생성 이미지 저장 디렉토리.
-        background_image_path (str): (옵션) 별도 배경 이미지 경로.
-
-    Returns:
-        dict: 생성된 이미지(`PIL.Image`)와 저장 경로.
-        bool: 실패 시 False 반환.
+    주요 기능:
+    - 이미지 로드 및 배경 제거
+    - 텍스트 프롬프트 생성
+    - Stable Diffusion 기반 이미지 생성
+    - ControlNet 및 IP-Adapter 기반 VTON 기능 제공
     """
-    # 1. 이미지 로더
-    logger.debug(f"🛠️ 이미지 로드 시작")
-    image_loader = ImageLoader()
-    loaded_image, filename = image_loader.load_image(image_path=image_path, target_size=None)
 
-    if loaded_image is None:
-        logger.error("❌ 이미지 로드에 실패했습니다. 처리를 중단합니다.")
-        return False
+    def __init__(self):
+        """
+        ImgGenPipeline 초기화:
+        - 이미지 로더, 배경 제거기 초기화
+        - Stable Diffusion Image-to-Image 파이프라인 로드 (IP-Adapter 포함)
+        """
+        logger.debug("🛠️ 이미지 생성기 파이프라인 초기화 시작")
 
-    logger.info("✅ 이미지 로드 성공.")
+        # 유틸리티 초기화
+        self.image_loader = ImageLoader()
+        self.background_handler = BackgroundHandler()
 
-    # 2. 배경 제거
-    logger.debug(f"🛠️ 배경 제거 시작")
-    background_handler = BackgroundHandler()
+        # Diffusion 모델 파이프라인 로드
+        try:
+            logger.info("🛠️ Diffusion Pipeline 로딩 시작")
+            self.diffusion_pipeline = get_model_pipeline(
+                model_id="SG161222/RealVisXL_V5.0", # ""
+                model_type="diffusion_text2img",
+                use_ip_adapter=True,
+                ip_adapter_config={
+                    "repo_id": "h94/IP-Adapter",
+                    "subfolder": "sdxl_models",
+                    "weight_name": "ip-adapter_sdxl.bin",
+                    "scale": 0.7
+                }
+            )
+            logger.info("✅ Diffusion Pipeline 로딩 완료")
+        except Exception as e:
+            logger.error(f"❌ Diffusion Pipeline 로딩 실패: {e}")
+            self.diffusion_pipeline = None
 
-    processed_image, save_path = background_handler.remove_background(
-        input_image=loaded_image,
-        original_filename=filename,
-    )
+        # # VTON 파이프라인 로드
+        # try:
+        #     logger.debug("🛠️ VTON 파이프라인 및 MidasDetector 로딩 시작")
+        #     self.vton_pipeline, self.midas_detector = get_vton_pipeline(
+        #         pipeline_model="diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+        #         vae_model="madebyollin/sdxl-vae-fp16-fix",
+        #         controlnet_model="diffusers/controlnet-depth-sdxl-1.0",
+        #         midas_model="lllyasviel/ControlNet",
+        #         ip_adapter_config={
+        #             "repo_id": "h94/IP-Adapter",
+        #             "subfolder": "sdxl_models",
+        #             "weight_name": "ip-adapter_sdxl.bin",
+        #             "scale": 0.75
+        #         },
+        #         lora_config={
+        #             "repo_id": "Norod78/weird-fashion-show-outfits-sdxl-lora",
+        #             "weight_name": "sdxl-WeirdOutfit-Dreambooh.safetensors"
+        #         },
+        #     )
+        #     logger.info("✅ VTON 파이프라인 및 MidasDetector 로딩 완료")
+        # except Exception as e:
+        #     logger.error(f"❌ VTON 파이프라인 및 MidasDetector 로딩 실패: {e}")
+        #     self.diffusion_pipeline = None
 
-    if processed_image is None:
-        logger.error("❌ 배경 제거에 실패했습니다. 처리를 중단합니다.")
-        return False
+        logger.info("✅ 이미지 생성기 파이프라인 초기화 완료")
+    
+    def generate_image(self,
+            product: dict,
+            image_path: str,
+            prompt_mode: str = "human",
+            output_dir: str = "./backend/data/output/",
+            seed: int = 42,
+        ) -> dict:
+        """
+        주어진 상품 정보 및 입력 이미지로부터 새로운 이미지를 생성합니다.
 
-    logger.info("✅ 배경 제거 및 저장 성공.")
+        Args:
+            product (dict): 상품 정보를 담은 딕셔너리 (예: {"name": "셔츠", ...})
+            image_path (str): 입력 이미지 파일 경로
+            prompt_mode (str): 프롬프트 생성 모드 ("human" 또는 "background"), 기본값 "human"
+            output_dir (str): 생성된 이미지를 저장할 디렉토리 경로, 기본값 "./backend/data/output/"
+            seed (int): 랜덤 시드 값 (재현성 확보용), 기본값 42
 
-    # 3. 프롬프트 생성
-    logger.debug("🛠️ 프롬프트 생성 시작")
-    prompts = generate_prompts(product, mode=prompt_mode)
+        Returns:
+            dict: 생성된 이미지 및 저장 경로를 포함하는 딕셔너리:
+                  {"image": PIL.Image, "image_path": str}
+                  실패 시 {"image": None, "image_path": None} 반환.
+        """
+        logger.debug("🛠️ generate_image() 시작")
+        result = {"image": None, "image_path": None}
 
-    if prompts:
-        logger.info("✅ 프롬프트 생성 완료")
-    else:
-        logger.error("❌ 프롬프트 생성 실패")
+        try:
+            # 0. 캐시 체크
+            cache_key = generate_cache_key(product, image_path, prompt_mode, seed)
+            name_without_ext, _ = os.path.splitext(os.path.basename(image_path))
+            os.makedirs(output_dir, exist_ok=True)
+            save_path = os.path.join(output_dir, f"{cache_key}_{name_without_ext}.png")
 
-    # 4. 모델 파이프라인 생성
-    logger.debug(f"🛠️ 모델 다운로드 및 로드 시작")
-    pipeline = get_model_pipeline(
-        model_id=model_id, 
-        model_type=model_type,
-        use_ip_adapter=True,
-        ip_adapter_config={
-            "repo_id": "h94/IP-Adapter",
-            "subfolder": "sdxl_models",
-            "weight_name": "ip-adapter_sdxl.bin",
-            "scale": ip_adapter_scale
-        }
-    )
-    if pipeline:
-        logger.info(f"✅ 모델 다운로드 및 로드 완료")
-    else:
-        logger.error("❌ 모델 다운로드 또는 로드 실패.")
+            if os.path.exists(save_path):
+                logger.info(f"✅ 캐시 이미지 존재 확인: {save_path}")
+                return {"image": Image.open(save_path), "image_path": save_path}
 
-    # 시각 기반 랜덤시드 생성 년월일시분초
-    now = datetime.datetime.now()
-    seed = int(now.strftime("%Y%m%d%H%M%S"))
-    generator = torch.manual_seed(seed)
-    logger.debug(f"🛠️ 날짜 시드: {seed}")
+            # 1. 이미지 로더
+            logger.debug(f"🛠️ 이미지 로드 시작")
+            loaded_image, filename = self.image_loader.load_image(image_path=image_path, target_size=None)
+            if loaded_image is None:
+                logger.error("❌ 이미지 로드에 실패했습니다. 처리를 중단합니다.")
+                return result
+            logger.info("✅ 이미지 로드 성공.")
 
-    # 5. 제품 이미지 생성하기
-    logger.debug("🛠️ 모델 파이프라인으로 이미지 생성 시작")
-    try:
-        img_2_img_gen = Img2ImgGenerator(pipeline)
-        gen_image, image_path = img_2_img_gen.generate_img(
-            prompt=prompts["background_prompt"],
-            reference_image=processed_image,
-            filename=filename,
-            negative_prompt=prompts["negative_prompt"],
-            size=(512, 512),
-            generator=generator,
-            num_inference_steps=num_inference_steps,
-            guidance_scale=guidance_scale,
-        )
-        logger.info("✅ 이미지 생성 성공")
-    except Exception as e:
-        logger.error(f"❌ 이미지 생성 중 에러 발생: {e}")
-        return False
+            # 2. 배경 제거
+            logger.debug(f"🛠️ 배경 제거 시작")
+            processed_image, _ = self.background_handler.remove_background(
+                input_image=loaded_image,
+                original_filename=filename,
+            )
+            if processed_image is None:
+                logger.error("❌ 배경 제거에 실패했습니다. 처리를 중단합니다.")
+                return result
+            logger.info("✅ 배경 제거 및 저장 성공.")
 
-    return {
-        "image": gen_image,
-        "image_path": image_path
-    }
+            # 3. 프롬프트 생성
+            logger.debug("🛠️ 프롬프트 생성 시작")
+            prompts = generate_prompts(product, mode=prompt_mode)
+            if prompts:
+                logger.info("✅ 프롬프트 생성 완료")
+            else:
+                prompts = {
+                    "background_prompt": "",
+                    "negative_prompt": "",
+                }
+                logger.warning("⚠️ 프롬프트 생성 실패. 기본 프롬프트로 실행합니다.")
+
+            # RGBA → RGB
+            if processed_image.mode != 'RGB':
+                # logger.warning("⚠️ processed_image를 RGB로 변환")
+                processed_image = processed_image.convert("RGB")
+
+            logger.info(f"✅ 랜덤 시드: {seed}")
+            generator = torch.manual_seed(seed)
+
+            # 4. 이미지 생성
+            if not self.diffusion_pipeline:
+                logger.error("❌ Diffusion Pipeline이 초기화되지 않았습니다. 처리를 중단합니다.")
+                return result
+            logger.debug("🛠️ 모델 파이프라인으로 이미지 생성 시작")
+            try:
+                result_image = self.diffusion_pipeline(
+                    prompt=prompts["background_prompt"],       # 생성할 이미지의 주요 텍스트 설명 (이미지 품질과 콘셉트에 직접적 영향)
+                    negative_prompt=prompts["negative_prompt"],# 생성 시 배제할 요소(예: 'blurry', 'text', 'logo') → 품질 안정성 향상
+                    ip_adapter_image=processed_image,          # IP-Adapter 입력 이미지 (제품 구조, 색상, 특징 반영) → 유사성 높임
+                    width=512,                                 # 출력 이미지 가로 크기 (해상도 ↑ 시 품질 ↑, VRAM ↑, 속도 ↓)
+                    height=768,                                # 출력 이미지 세로 크기 (동일하게 해상도 영향)
+                    num_inference_steps=99,                    # 디퓨전 스텝 수 (높을수록 디테일 ↑, 속도 ↓, VRAM ↑) → 권장 30~50
+                    guidance_scale=7,                          # 프롬프트 강조 강도 (높으면 프롬프트 반영 ↑, 낮으면 창의성 ↑), 너무 높으면 비현실적 아티팩트 발생 가능 (보통 5~8)
+                    num_images_per_prompt=1,                   # 한 번의 추론에서 생성할 이미지 개수 (↑시 VRAM 부담 커짐)
+                    generator=generator,                       # 랜덤 시드 고정 (재현성 확보) → 동일 설정 시 항상 같은 이미지 생성
+                ).images[0]
+                logger.info("✅ 이미지 생성 성공")
+            except Exception as e:
+                logger.error(f"❌ 이미지 생성 중 에러 발생: {e}")
+                return result
+
+            result_image.save(save_path)
+            logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
+
+            logger.debug("✅ generate_image() 완료")
+            return {"image": result_image, "image_path": save_path}
+
+        except Exception as e:
+            logger.error(f"❌ generate_image() 실패: {e}")
+        
+        return result
+
+    def generate_vton(self,
+        model_image_path: str, 
+        ip_image_path: str, 
+        mask_image_path: str, 
+        output_dir="./backend/data/output",
+        seed: int = 42,
+        ) -> dict:
+        """
+        Virtual Try-On(VTON): 의류 이미지를 착용한 모델 이미지를 생성합니다.
+
+        Args:
+            model_image_path (str): 모델 이미지 경로
+            ip_image_path (str): 의류 이미지 경로
+            mask_image_path (str): 마스크 이미지 경로
+            output_dir (str): 생성된 이미지를 저장할 디렉토리 경로
+            seed (int): 랜덤 시드 값 (재현성 확보용), 기본값 42
+
+        Returns:
+            dict: 생성된 이미지 및 저장 경로를 포함하는 딕셔너리:
+                  {"image": PIL.Image, "image_path": str}
+                  실패 시 {"image": None, "image_path": None} 반환.
+        """
+        logger.debug("🛠️ generate_vton() 시작")
+        result = {"image": None, "image_path": None}
+
+        try:
+            # 1. 의류 이미지 로드
+            logger.debug(f"🛠️ 이미지 로드 시작")
+            model_image = load_image(model_image_path).convert("RGB")
+            loaded_image, filename = self.image_loader.load_image(image_path=ip_image_path, target_size=None)
+            mask_image = load_image(mask_image_path)
+            logger.info("✅ 이미지 로드 완료")
+
+            # 2. 배경 제거
+            logger.debug(f"🛠️ 의류 이미지 배경 제거 시작")
+            ip_image, removed_bg_path = self.background_handler.remove_background(
+                input_image=loaded_image,
+                original_filename=filename,
+            )
+            if ip_image is None:
+                logger.error("❌ 배경 제거 실패")
+                return False
+            logger.info(f"✅ 배경 제거 완료: {removed_bg_path}")
+
+            # Depth 생성
+            logger.debug("🛠️ Depth 제어 이미지 생성 시작")
+            depth_image = self.midas_detector(model_image).resize((512, 768)).convert("RGB")
+
+            logger.info(f"✅ 랜덤 시드: {seed}")
+            generator = torch.manual_seed(seed)
+
+            # 3. VTON 실행
+            logger.debug("🛠️ vton 파이프라인 실행 시작")
+            result_image = self.vton_pipeline(
+                prompt=(
+                    "A full-body photo of the model wearing the selected clothing item. "
+                    "Preserve the exact design, fabric texture, material shine, seams, and colors of the clothing. "
+                    "Ensure natural fit and realistic lighting."
+                ),
+                negative_prompt=(
+                    "blurry, unrealistic, distorted body, misaligned clothing, missing fabric details, flat colors, "
+                    "incorrect texture, artifacts, bad anatomy, deformed hands, deformed face"
+                ),
+                width=512,
+                height=768,
+                image=model_image,
+                mask_image=mask_image,
+                ip_adapter_image=ip_image,
+                control_image=depth_image,
+                controlnet_conditioning_scale=0.7,
+                strength=0.99,
+                guidance_scale=7.5,
+                num_inference_steps=100,
+                generator=generator
+            ).images[0]
+            logger.info("✅ 이미지 생성 완료")
+
+            os.makedirs(output_dir, exist_ok=True)
+            name_without_ext, _ = os.path.splitext(filename)
+            save_path = os.path.join(output_dir, f"{name_without_ext}_vton.png")
+            result_image.save(save_path)
+            logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
+
+            logger.info("✅ generate_vton() 완료")
+            return {"image": result_image, "image_path": save_path}
 
 
-def vton_generator_main(
-    model_image_path: str,
-    ip_image_path:str,
-    mask_image_path:str,
-    seed:int = None,
-):
-    """
-    Virtual Try-On (VTON) 기능을 통해 모델 이미지에 의류를 합성합니다.
+        except Exception as e:
+            logger.error(f"❌ generate_vton() 실패: {e}")
 
-    이 함수는 다음 단계를 수행합니다:
-    1. 의류 이미지 로드:
-        - ip_image_path에서 의류 이미지를 불러옵니다.
-    2. 배경 제거:
-        - 의류 이미지의 배경을 제거하여 합성에 적합한 형태로 만듭니다.
-    3. VTON 파이프라인 준비:
-        - get_vton_pipeline()을 사용하여 Stable Diffusion 기반 파이프라인을 구성합니다.
-        - IP-Adapter 및 LoRA 모델이 주입됩니다.
-    4. 합성 실행:
-        - run_virtual_tryon()을 호출하여 모델 이미지와 의류 이미지를 합성합니다.
-        - ControlNet 기반으로 자연스러운 합성 이미지를 생성합니다.
-    5. 결과 저장:
-        - 생성된 이미지를 `backend/data/output/`에 PNG 형식으로 저장합니다.
-
-    Args:
-        model_image_path (str): 모델(사람) 이미지의 파일 경로.
-        ip_image_path (str): 의류 이미지 파일 경로.
-        mask_image_path (str): 합성할 영역의 마스크 이미지 경로.
-        seed (int): 랜덤시드. 미지정시 시간기반지정
-
-    Returns:
-        dict: {
-            "image": PIL.Image,  # 생성된 합성 이미지
-            "image_path": str    # 저장된 이미지 파일 경로
-        }
-        처리 실패 시 False 반환.
-    """
-    # 1. 의류 이미지 로드
-    logger.debug(f"🛠️ 이미지 로드 시작")
-    image_loader = ImageLoader()
-    loaded_image, filename = image_loader.load_image(image_path=ip_image_path, target_size=None)
-
-    if loaded_image is None:
-        logger.error("❌ IP 이미지 로드 실패 → 종료")
-        return False
-    logger.info("✅ IP 이미지 로드 완료")
-
-    # 2. 배경 제거
-    logger.debug(f"🛠️ 배경 제거 시작")
-    background_handler = BackgroundHandler()
-
-    ip_image, removed_bg_path = background_handler.remove_background(
-        input_image=loaded_image,
-        original_filename=filename,
-    )
-
-    if ip_image is None:
-        logger.error("❌ 배경 제거 실패 → 종료")
-        return False
-    logger.info(f"✅ 배경 제거 완료 → 임시 저장 경로: {removed_bg_path}")
-
-    # 3. VTON 파이프라인 로드
-    logger.debug("🛠️ vton 파이프라인 불러오기 시작")
-    pipeline = get_vton_pipeline(
-        pipeline_model="diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
-        vae_model="madebyollin/sdxl-vae-fp16-fix",
-        controlnet_model="diffusers/controlnet-depth-sdxl-1.0",
-        ip_adapter_config={
-            "repo_id": "h94/IP-Adapter",
-            "subfolder": "sdxl_models",
-            "weight_name": "ip-adapter_sdxl.bin",
-            "scale": 0.75
-        },
-        lora_config={
-            "repo_id": "Norod78/weird-fashion-show-outfits-sdxl-lora",
-            "weight_name": "sdxl-WeirdOutfit-Dreambooh.safetensors"
-        },
-    )
-    logger.info("✅ vton 파이프라인 불러오기 완료")
-
-    # 4. VTON 실행
-    logger.debug("🛠️ vton 실행 시작")
-    try:
-        result_image = run_virtual_tryon(
-            pipeline=pipeline,
-            model_image_path=model_image_path,
-            ip_image_path=removed_bg_path,
-            mask_image_path=mask_image_path,
-            prompt=(
-                "A full-body photo of the model wearing the selected clothing item. "
-                "Preserve the exact design, fabric texture, material shine, seams, and colors of the clothing. "
-                "Ensure natural fit and realistic lighting."
-            ),
-            negative_prompt=(
-                "blurry, unrealistic, distorted body, misaligned clothing, missing fabric details, flat colors, "
-                "incorrect texture, artifacts, bad anatomy, deformed hands, deformed face"
-            ),
-            width=512,
-            height=768,
-            controlnet_conditioning_scale=0.7,
-            strength=0.99,
-            guidance_scale=7.5,
-            num_inference_steps=100,
-            seed=seed
-        )
-    except Exception as e:
-        logger.error(f"❌ VTON 처리 중 오류 발생: {e}")
-        return False
-
-    # 5. 결과 저장
-    name_without_ext, _ = os.path.splitext(filename)
-    save_path = f"backend/data/output/{name_without_ext}_vton.png"
-    result_image.save(save_path)
-    logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
-
-    return {
-        "image": result_image,
-        "image_path": save_path
-    }
+        return result
