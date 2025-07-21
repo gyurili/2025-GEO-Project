@@ -21,7 +21,7 @@ def main():
     product["differences"] = differences
     
     logger.info("🛠️ VTON 이미지 생성 시작")
-    vton_image_path = os.path.join(output_path, "suit_vton.png")
+    vton_image_path = os.path.join(output_path, "suit.png")
     vton_abs_path = Path(vton_image_path).resolve()
     
     if vton_abs_path.exists():

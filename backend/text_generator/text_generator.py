@@ -33,24 +33,24 @@ def generate_openai(product: dict) -> dict:
         qna_format_prompt(),
         quantitative_prompt(),
         expert_quote_prompt(),
-        fluent_prompt(),
-        expand_product_details(),
-        css_friendly_prompt(),
+        storytelling_prompt(),
+        modern_design_prompt(),
     ]
 
     if product.get("differences"):
         diff_prompt = "\n".join([
-            "이 상품은 다음과 같은 차별점을 가지고 있습니다:",
+            "이 상품은 경쟁사 대비 다음과 같은 차별점을 가지고 있습니다:",
             *[f"- {item}" for item in product["differences"]],
             "위 차별점들을 상세페이지 내용에서 자연스럽게 강조해 주세요."
         ])
         prompt_parts.insert(1, diff_prompt)
     
     prompt_parts += [
-        f'이미지 태그는 다음 형식을 지켜주세요. <img class="product-image" src="{product["vton_image_path"]}" alt=" ">',
+        "상세페이지 내에 상품 이미지를 포함시켜주세요.",
+        f'상품 이미지는 product["vton_image_path"] 경로에 있습니다.'
+        f'따라서 태그는 다음 형식을 지켜주세요. <img class="product-image" src="{product["vton_image_path"]}" alt=" ">',
         "alt 속성은 제품명과 특징을 바탕으로 자동 생성해주세요.",
-        "모든 정보를 HTML로 출력해주세요. 제공된 정보를 바탕으로 상세페이지를 풍성하고 길게 만들어주세요.",
-        "결과는 <html> ~ </html> 태그 안에 있어야 합니다"
+        "모든 정보를 HTML로 출력해주세요. 결과는 <html> ~ </html> 태그 안에 있어야 합니다"
     ]
     
     prompt = "\n".join(prompt_parts)
