@@ -172,8 +172,8 @@ class ImgGenPipeline:
                     prompt=prompts["background_prompt"],       # 생성할 이미지의 주요 텍스트 설명 (이미지 품질과 콘셉트에 직접적 영향)
                     negative_prompt=prompts["negative_prompt"],# 생성 시 배제할 요소(예: 'blurry', 'text', 'logo') → 품질 안정성 향상
                     ip_adapter_image=processed_image,          # IP-Adapter 입력 이미지 (제품 구조, 색상, 특징 반영) → 유사성 높임
-                    width=512,                                 # 출력 이미지 가로 크기 (해상도 ↑ 시 품질 ↑, VRAM ↑, 속도 ↓)
-                    height=768,                                # 출력 이미지 세로 크기 (동일하게 해상도 영향)
+                    width=1024,                                # 출력 이미지 가로 크기 (해상도 ↑ 시 품질 ↑, VRAM ↑, 속도 ↓)
+                    height=1024,                               # 출력 이미지 세로 크기 (동일하게 해상도 영향)
                     num_inference_steps=99,                    # 디퓨전 스텝 수 (높을수록 디테일 ↑, 속도 ↓, VRAM ↑) → 권장 30~50
                     guidance_scale=7,                          # 프롬프트 강조 강도 (높으면 프롬프트 반영 ↑, 낮으면 창의성 ↑), 너무 높으면 비현실적 아티팩트 발생 가능 (보통 5~8)
                     num_images_per_prompt=1,                   # 한 번의 추론에서 생성할 이미지 개수 (↑시 VRAM 부담 커짐)

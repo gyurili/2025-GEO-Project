@@ -21,7 +21,7 @@ if __name__ == "__main__":
             logger.info("✅ config.yaml 로드 완료")
         
         product = config["input"]
-        image_path = product["ip_image_path"]
+        image_path = product["image_path_list"][0]
 
         logger.debug("🛠️ 이미지 생성기 시작")
         image_generator = ImgGenPipeline()  # 클래스 변수 선언
