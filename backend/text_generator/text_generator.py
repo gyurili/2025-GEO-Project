@@ -106,12 +106,9 @@ def generate_hf(product: dict) -> dict:
     prompt_parts = [
         system_instruction(product).strip(),
         css_friendly_prompt().strip(),
-        "다음은 제품 상세페이지 HTML입니다.",
-        f'이미지 태그는 다음 형식을 지켜주세요. <img class="product-image" src="{product["vton_image_path"]}" alt=" ">',
-        "alt 속성은 제품명과 특징을 바탕으로 자동 생성해주세요.",
-        "<!DOCTYPE html>"
     ]
     
+    # 차별점 반영
     if product.get("differences"):
         diff_prompt = "\n".join([
             "이 상품은 다음과 같은 차별점을 가지고 있습니다:",
@@ -119,6 +116,23 @@ def generate_hf(product: dict) -> dict:
             "위 차별점들을 상세페이지 내용에서 자연스럽게 강조해 주세요."
         ])
         prompt_parts.insert(1, diff_prompt)
+        
+    # 이미지 반영
+    image_paths = product.get("image_path_list", [])
+
+    if image_paths:
+        image_prompt_lines = ["상세페이지 내에 다음 상품 이미지를 모두 포함시켜주세요:"]
+        for path in image_paths:
+            image_prompt_lines.append(f'- <img class="product-image" src="{path}" alt="...">')
+        image_prompt_lines.append("각 이미지의 alt 속성은 제품명과 특징을 바탕으로 자동 생성해주세요")
+        image_prompt_lines.append("각 이미지는 적절한 섹션에 분산하여 배치해주세요.")
+
+    prompt_parts += image_prompt_lines
+    prompt_parts += [
+        "모든 정보를 HTML로 출력해주세요. 결과는 <html> ~ </html> 태그 안에 있어야 합니다",
+        "다음은 제품 상세페이지 HTML입니다.",
+        "<!DOCTYPE html>"
+    ]
 
     prompt = "\n".join(prompt_parts)
 
