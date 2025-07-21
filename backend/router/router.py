@@ -11,7 +11,6 @@ from backend.text_generator.text_generator_main import text_generator_main
 from backend.page_generator.page_generator_main import page_generator_main
 
 logger = get_logger(__name__)
-app = FastAPI()
 
 process_router = APIRouter(prefix="/process")
 image_router = APIRouter(prefix="/image")
@@ -173,8 +172,3 @@ async def download_detail_file(
     if not os.path.isfile(file_path):
         return JSONResponse({"success": False, "error": f"{file_type} 파일 없음"}, status_code=404)
     return FileResponse(file_path, filename=os.path.basename(file_path))
-
-# ---- 앱 라우터 등록 ----
-app.include_router(process_router)
-app.include_router(image_router)
-app.include_router(output_router)
