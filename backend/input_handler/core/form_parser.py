@@ -234,7 +234,7 @@ class FormParser:
             logger.debug("🛠️ 이미지 경로 처리 시작")
             image_paths = self.validate_image_paths(form_data.get('image_path'))
             if image_paths:
-                parsed_data['image_path'] = image_paths
+                parsed_data['image_path_list'] = image_paths
                 logger.debug(f"🛠️ 이미지 경로 설정: {len(image_paths)}개")
             else:
                 logger.debug("🛠️ 이미지 경로 없음 - 선택사항이므로 제외")
@@ -244,17 +244,17 @@ class FormParser:
             
             # 이미지 필드가 없으면 빈 리스트로 설정하여 검증
             validation_data = parsed_data.copy()
-            if 'image_path' not in validation_data:
-                validation_data['image_path'] = []
-                logger.debug("🛠️ 검증용 빈 image_path 설정")
+            if 'image_path_list' not in validation_data:
+                validation_data['image_path_list'] = []
+                logger.debug("🛠️ 검증용 빈 image_path_list 설정")
             
             validated_data = self.schema(**validation_data)
             
-            # 검증된 데이터에서 빈 image_path는 제거
+            # 검증된 데이터에서 빈 image_path_list는 제거
             final_data = validated_data.dict()
-            if 'image_path' in final_data and not final_data['image_path']:
-                del final_data['image_path']
-                logger.debug("🛠️ 빈 image_path 제거")
+            if 'image_path_list' in final_data and not final_data['image_path_list']:
+                del final_data['image_path_list']
+                logger.debug("🛠️ 빈 image_path_list 제거")
             
             logger.info("✅ 폼 데이터 파싱 및 검증 완료")
             return final_data

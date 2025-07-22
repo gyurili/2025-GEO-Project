@@ -1,180 +1,544 @@
-from fastapi import FastAPI, APIRouter, Body, Form
-from fastapi.responses import JSONResponse, FileResponse
-from typing import Dict, Any, Optional, List
+import os
 import asyncio
+from fastapi import FastAPI, APIRouter, Body, Form, Query
+from fastapi.responses import JSONResponse, FileResponse
+
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Depends
+from typing import Dict, Any, Optional, List
+import sys
+from pathlib import Path
+
+# 로거 임포트 추가
+from backend.input_handler.core.input_main import InputHandler
+from backend.input_handler.schemas.input_schema import ProductInputSchema
+from backend.input_handler.core.image_composer import ImageComposer
 
 from utils.logger import get_logger
-logger = get_logger(__name__)
-
 from backend.competitor_analysis.competitor_main import competitor_main
-from backend.image_generator.image_generator_main import image_generator_main, vton_generator_main
+from backend.image_generator.image_generator_main import ImgGenPipeline
 from backend.text_generator.text_generator_main import text_generator_main
 from backend.page_generator.page_generator_main import page_generator_main
 
-app = FastAPI()
+logger = get_logger(__name__)
 
-input_router = APIRouter(prefix="/input")
-image_router = APIRouter(prefix="/image")
+input_router = APIRouter(prefix="/input", tags=["input"])
+process_router = APIRouter(prefix="/process")
 output_router = APIRouter(prefix="/output")
 
-# ---- 전역 상태 (데모/PoC용, 실서비스는 세션·DB 추천) ----
-latest_image_gen_result: Dict[str, Optional[List[str]]] = {"candidate_images": None}
-selected_image_idx: Optional[int] = None
-latest_diff_result: Optional[Dict[str, Any]] = None
-latest_detail_page_html: Optional[str] = None
-latest_detail_page_path: str = "backend/data/result/detail_page.html"
-latest_product: Optional[Dict[str, Any]] = None
+img_gen_pipeline = ImgGenPipeline()
 
-# ---- 비동기 이미지 생성 ----
-async def async_diffusion_gen(product: dict) -> str:
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, lambda: image_generator_main(
-        product, product["image_path"], prompt_mode="human"
-    ))
-    return result["image_path"] if result and result.get("image_path") else None
+# InputHandler 인스턴스 생성 (의존성 주입)
+def get_input_handler() -> InputHandler:
+    """InputHandler 인스턴스 반환"""
+    logger.debug("🛠️ InputHandler 인스턴스 생성 시작")
+    try:
+        handler = InputHandler()
+        logger.info("✅ InputHandler 인스턴스 생성 완료")
+        return handler
+    except Exception as e:
+        logger.error(f"❌ InputHandler 인스턴스 생성 실패: {e}")
+        raise
 
-async def async_vton_gen(product: dict) -> str:
-    model_image_path = product.get("model_image_path", "backend/data/input/model.jpg")
-    mask_image_path = product.get("mask_image_path", None)
-    loop = asyncio.get_running_loop()
-    result = await loop.run_in_executor(None, lambda: vton_generator_main(
-        model_image_path, product["image_path"], mask_image_path
-    ))
-    return result["image_path"] if result and result.get("image_path") else None
+# ImageComposer 인스턴스 생성 (의존성 주입)
+def get_image_composer() -> ImageComposer:
+    """ImageComposer 인스턴스 반환"""
+    logger.debug("🛠️ ImageComposer 인스턴스 생성 시작")
+    try:
+        composer = ImageComposer()
+        logger.info("✅ ImageComposer 인스턴스 생성 완료")
+        return composer
+    except Exception as e:
+        logger.error(f"❌ ImageComposer 인스턴스 생성 실패: {e}")
+        raise
 
-# ---- 1. input 라우터 ----
-@input_router.post("/")
+
+@input_router.post("/process", response_model=Dict[str, Any])
+async def process_product_input(
+    name: str = Form(..., description="상품명"),
+    category: str = Form(..., description="카테고리"),
+    price: int = Form(..., description="가격"),
+    brand: str = Form(..., description="브랜드"),
+    features: str = Form(..., description="상품 특징"),
+    css_type: int = Form(..., description="CSS 타입"),
+    image: Optional[UploadFile] = File(None, description="상품 이미지"),
+    handler: InputHandler = Depends(get_input_handler)
+):
+    """
+    상품 입력 데이터 처리 (단일 이미지)
+    - 폼 데이터 검증
+    - 이미지 업로드 처리
+    - config.yaml 생성
+    - product_input 딕셔너리 반환
+    """
+    logger.debug("🛠️ 상품 입력 데이터 처리 시작")
+    logger.debug(f"🛠️ 요청 데이터: name={name}, category={category}, price={price}, brand={brand}")
+    
+    try:
+        # 폼 데이터 구성
+        logger.debug("🛠️ 폼 데이터 구성 중")
+        form_data = {
+            "name": name,
+            "category": category,
+            "price": price,
+            "brand": brand,
+            "features": features,
+            "css_type": css_type
+        }
+        logger.debug(f"🛠️ 폼 데이터 구성 완료: {form_data}")
+        
+        # 입력 처리
+        logger.debug("🛠️ InputHandler를 통한 상품 입력 처리 시작")
+        uploaded_files = [image] if image else None
+        product_input = handler.process_form_input(form_data, uploaded_files)
+        logger.info("✅ 상품 입력 처리 완료")
+        
+        response = {
+            "success": True,
+            "message": "상품 입력 처리 완료",
+            "data": product_input
+        }
+        logger.debug(f"🛠️ 응답 데이터 준비 완료: {len(str(response))} bytes")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ 상품 입력 처리 실패: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"상품 입력 처리 중 오류 발생: {str(e)}"
+        )
+
+
+@input_router.post("/process-multiple", response_model=Dict[str, Any])
+async def process_product_input_multiple(
+    name: str = Form(..., description="상품명"),
+    category: str = Form(..., description="카테고리"),
+    price: int = Form(..., description="가격"),
+    brand: str = Form(..., description="브랜드"),
+    features: str = Form(..., description="상품 특징"),
+    css_type: int = Form(..., description="CSS 타입"),
+    images: List[UploadFile] = File(..., description="상품 이미지들 (다중)"),
+    handler: InputHandler = Depends(get_input_handler)
+):
+    """
+    상품 입력 데이터 처리 (다중 이미지)
+    - 폼 데이터 검증
+    - 다중 이미지 업로드 처리
+    - config.yaml 생성
+    - product_input 딕셔너리 반환
+    """
+    logger.debug("🛠️ 다중 이미지 상품 입력 데이터 처리 시작")
+    logger.debug(f"🛠️ 요청 데이터: name={name}, category={category}, price={price}, brand={brand}")
+    logger.debug(f"🛠️ 업로드된 이미지 수: {len(images)}")
+    
+    try:
+        # 이미지 파일명 로그
+        image_names = [img.filename for img in images if img.filename]
+        logger.debug(f"🛠️ 업로드된 이미지 파일명: {image_names}")
+        
+        # 폼 데이터 구성
+        logger.debug("🛠️ 폼 데이터 구성 중")
+        form_data = {
+            "name": name,
+            "category": category,
+            "price": price,
+            "brand": brand,
+            "features": features,
+            "css_type": css_type
+        }
+        logger.debug(f"🛠️ 폼 데이터 구성 완료: {form_data}")
+        
+        # 입력 처리
+        logger.debug("🛠️ InputHandler를 통한 다중 이미지 상품 입력 처리 시작")
+        product_input = handler.process_form_input(form_data, images)
+        logger.info("✅ 다중 이미지 상품 입력 처리 완료")
+        
+        response = {
+            "success": True,
+            "message": "다중 이미지 상품 입력 처리 완료",
+            "data": product_input
+        }
+        logger.debug(f"🛠️ 응답 데이터 준비 완료: {len(str(response))} bytes")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ 다중 이미지 상품 입력 처리 실패: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"다중 이미지 상품 입력 처리 중 오류 발생: {str(e)}"
+        )
+
+
+@input_router.post("/process-json", response_model=Dict[str, Any])
+async def process_product_input_json(
+    product_data: ProductInputSchema,
+    handler: InputHandler = Depends(get_input_handler)
+):
+    """
+    상품 입력 데이터 처리 (JSON, 이미지 없음)
+    - JSON 데이터 검증
+    - config.yaml 생성 (이미지 없이)
+    - product_input 딕셔너리 반환
+    """
+    logger.debug("🛠️ JSON 상품 입력 데이터 처리 시작")
+    logger.debug(f"🛠️ 요청 데이터: name={product_data.name}, category={product_data.category}")
+    
+    try:
+        # 폼 데이터 구성
+        logger.debug("🛠️ JSON 데이터를 폼 데이터로 변환 중")
+        form_data = product_data.dict()
+        logger.debug(f"🛠️ 변환된 폼 데이터: {form_data}")
+        
+        # 입력 처리 (이미지 없음)
+        logger.debug("🛠️ InputHandler를 통한 JSON 상품 입력 처리 시작")
+        product_input = handler.process_form_input(form_data, uploaded_files=None)
+        logger.info("✅ JSON 상품 입력 처리 완료")
+        
+        response = {
+            "success": True,
+            "message": "JSON 상품 입력 처리 완료",
+            "data": product_input
+        }
+        logger.debug(f"🛠️ 응답 데이터 준비 완료: {len(str(response))} bytes")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ JSON 상품 입력 처리 실패: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"JSON 상품 입력 처리 중 오류 발생: {str(e)}"
+        )
+
+
+@input_router.post("/validate", response_model=Dict[str, Any])
+async def validate_product_input(
+    product_data: ProductInputSchema
+):
+    """
+    상품 입력 데이터 검증만 수행
+    """
+    logger.debug("🛠️ 상품 입력 데이터 검증 시작")
+    logger.debug(f"🛠️ 검증할 데이터: name={product_data.name}, category={product_data.category}")
+    
+    try:
+        validated_data = product_data.dict()
+        logger.info("✅ 상품 데이터 검증 완료")
+        
+        response = {
+            "success": True,
+            "message": "상품 데이터 검증 완료",
+            "data": validated_data
+        }
+        logger.debug(f"🛠️ 검증 응답 데이터 준비 완료")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ 상품 데이터 검증 실패: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"상품 데이터 검증 실패: {str(e)}"
+        )
+
+
+@input_router.get("/config", response_model=Dict[str, Any])
+async def get_config(
+    handler: InputHandler = Depends(get_input_handler)
+):
+    """
+    현재 config.yaml 설정 반환
+    """
+    logger.debug("🛠️ config.yaml 설정 로드 시작")
+    
+    try:
+        config = handler.load_config()
+        logger.info("✅ config.yaml 설정 로드 완료")
+        
+        response = {
+            "success": True,
+            "message": "설정 로드 완료",
+            "data": config
+        }
+        logger.debug(f"🛠️ 설정 데이터 응답 준비 완료")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ 설정 파일 로드 실패: {e}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"설정 파일 로드 실패: {str(e)}"
+        )
+
+
+@input_router.get("/product", response_model=Dict[str, Any])
+async def get_product_input(
+    handler: InputHandler = Depends(get_input_handler)
+):
+    """
+    config.yaml에서 product_input 딕셔너리 반환
+    """
+    logger.debug("🛠️ config.yaml에서 상품 입력 데이터 로드 시작")
+    
+    try:
+        product_input = handler.get_product_input_dict()
+        logger.info("✅ 상품 입력 데이터 로드 완료")
+        
+        response = {
+            "success": True,
+            "message": "상품 입력 데이터 로드 완료",
+            "data": product_input
+        }
+        logger.debug(f"🛠️ 상품 데이터 응답 준비 완료")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ 상품 입력 데이터 로드 실패: {e}")
+        raise HTTPException(
+            status_code=404,
+            detail=f"상품 입력 데이터 로드 실패: {str(e)}"
+        )
+
+
+@input_router.post("/config/validate", response_model=Dict[str, Any])
+async def validate_config(
+    handler: InputHandler = Depends(get_input_handler)
+):
+    """
+    현재 config.yaml 유효성 검증
+    """
+    logger.debug("🛠️ config.yaml 유효성 검증 시작")
+    
+    try:
+        is_valid = handler.validate_existing_config()
+        
+        if is_valid:
+            logger.info("✅ 설정 파일 검증 완료 - 유효함")
+        else:
+            logger.warning("⚠️ 설정 파일 검증 완료 - 유효하지 않음")
+        
+        response = {
+            "success": True,
+            "message": "설정 파일 검증 완료",
+            "data": {"is_valid": is_valid}
+        }
+        logger.debug(f"🛠️ 검증 결과 응답 준비 완료: is_valid={is_valid}")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ 설정 파일 검증 실패: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"설정 파일 검증 실패: {str(e)}"
+        )
+
+
+@input_router.get("/health")
+async def health_check():
+    """
+    API 상태 확인
+    """
+    logger.debug("🛠️ Input Handler API 상태 확인 시작")
+    
+    try:
+        response = {
+            "success": True,
+            "message": "Input Handler API 정상 작동 중",
+            "service": "input_handler"
+        }
+        logger.info("✅ Input Handler API 상태 확인 완료 - 정상")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ API 상태 확인 실패: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"API 상태 확인 실패: {str(e)}"
+        )
+
+@input_router.post("/compose")
+async def compose_image(
+    composition_data: Dict[str, Any],
+    composer: ImageComposer = Depends(get_image_composer)
+):
+    """
+    이미지 합성 API (다중 상품 이미지 → 단일 결과)
+    """
+    logger.debug("🛠️ 이미지 합성 API 호출")
+    
+    # user_images와 user_image 둘 다 지원 (하위 호환성)
+    user_images = composition_data.get('user_images', [])
+    if not user_images and 'user_image' in composition_data:
+        user_images = [composition_data['user_image']]
+        composition_data['user_images'] = user_images
+    
+    logger.debug(f"🛠️ 합성 데이터: {list(composition_data.keys())}")
+    logger.debug(f"🛠️ 상품 이미지 수: {len(user_images)}")
+    
+    try:
+        # 필수 데이터 확인
+        required_fields = ['user_images', 'target_image', 'generation_options']
+        missing_fields = [field for field in required_fields if field not in composition_data]
+        
+        if missing_fields:
+            logger.error(f"❌ 필수 필드 누락: {missing_fields}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"필수 필드가 누락되었습니다: {missing_fields}"
+            )
+        
+        # 이미지 합성 실행
+        logger.debug("🛠️ ImageComposer를 통한 이미지 합성 시작")
+        result = composer.compose_images(composition_data)
+        
+        if result:
+            logger.info(f"✅ 이미지 합성 완료 ({result.get('product_images_count', 1)}개 상품)")
+            response = {
+                "success": True,
+                "message": f"이미지 합성이 완료되었습니다 ({result.get('product_images_count', 1)}개 상품)",
+                "data": result
+            }
+            return response
+        else:
+            logger.error("❌ 이미지 합성 실패")
+            raise HTTPException(
+                status_code=500,
+                detail="이미지 합성에 실패했습니다"
+            )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 이미지 합성 API 실패: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"이미지 합성 중 오류 발생: {str(e)}"
+        )
+
+@input_router.get("/image-health")
+async def health_check():
+    """
+    이미지 생성 API 상태 확인
+    """
+    logger.debug("🛠️ 이미지 생성 API 상태 확인")
+    
+    try:
+        response = {
+            "success": True,
+            "message": "Image Generator API 정상 작동 중",
+            "service": "image_generator"
+        }
+        logger.info("✅ 이미지 생성 API 상태 확인 완료")
+        return response
+        
+    except Exception as e:
+        logger.error(f"❌ API 상태 확인 실패: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"API 상태 확인 실패: {str(e)}"
+        )
+
+# ---- 1. process 라우터: 차별점+후보이미지 ----
+@process_router.post(
+    "/analyze-product",
+    summary="상품 분석 및 이미지 생성",
+    description="상품 정보를 받아 경쟁사 리뷰 분석 및 차별점 도출, 그리고 후보 이미지(최대 2개) 생성을 병렬로 처리합니다."
+)
 async def receive_product_info(
-    req: Dict[str, Any] = Body(...)
+    product: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
     """
-    상품 dict(JSON Body) 받아 Diffusion+VTON 후보 이미지 각 1장 및 차별점 분석 병렬 처리
+    상품 dict 입력 → 차별점 도출 + 후보 이미지(최대 2개) 생성 → 상태 dict(딕셔너리)에 누적
     """
-    logger.debug("🛠️ receive_product_info 진입 - dict/Body 기반")
-    global latest_image_gen_result, latest_diff_result, latest_product
-
-    product = req["input"]
-    latest_product = product
+    logger.debug("🛠️ receive_product_info 진입")
     try:
         competitor_task = competitor_main(product)
-        diffusion_task = async_diffusion_gen(product)
-        vton_task = async_vton_gen(product)
-
-        diff_result, img1, img2 = await asyncio.gather(
-            competitor_task, diffusion_task, vton_task
+        img_gen_task = asyncio.to_thread(
+            img_gen_pipeline.generate_image, product
         )
-        candidate_images = [img for img in [img1, img2] if img]
+        diff_result, candidate_images_result = await asyncio.gather(
+            competitor_task, img_gen_task
+        )
 
-        latest_image_gen_result["candidate_images"] = candidate_images
-        latest_diff_result = diff_result
+        # 차별점 product dict에 추가
+        product['differences'] = diff_result.get('differences', []) if isinstance(diff_result, dict) else diff_result
 
-        logger.info("✅ 상품 입력/차별점/후보 이미지 2종 병렬 처리 완료")
-        return {
-            "success": True,
-            "diff_result": diff_result,
-            "image_gen_result": {"candidate_images": candidate_images}
-        }
+        # 후보 이미지(리스트, 내부도 리스트!) 추가
+        if candidate_images_result:
+            image_paths = [res["image_path"] for res in candidate_images_result if "image_path" in res]
+            product['candidate_images'] = [image_paths] if image_paths else [[]]
+        else:
+            product['candidate_images'] = [[]]
+
+        # 선택 이미지도 빈 리스트로 추가(아직 미선택)
+        product['selected_image_path'] = []
+        logger.info("✅ 상품입력/차별점/이미지 생성 병렬 처리 완료")
+        return product
     except Exception as e:
-        logger.error(f"❌ receive_product_info 처리 중 예외: {e}")
+        logger.error(f"❌ receive_product_info 예외: {e}")
         return {"success": False, "error": str(e)}
 
-# ---- 2. image 라우터 (후보 이미지 조회/선택) ----
-@image_router.get("/")
-async def get_candidate_images() -> Dict[str, Any]:
+# ---- 3. output 라우터: 상세페이지 생성 ----
+@output_router.post(
+    "/create-page",
+    summary="상세페이지 생성",
+    description="선택된 이미지 및 분석 데이터를 기반으로 텍스트 생성과 HTML 상세페이지를 생성하며, session_id를 반환합니다."
+)
+async def generate_detail_page(
+    product: Dict[str, Any] = Body(...)
+) -> Dict[str, Any]:
     """
-    후보 이미지 2장 경로 반환
-    """
-    logger.debug("🛠️ get_candidate_images 진입")
-    candidates = latest_image_gen_result.get("candidate_images")
-    if not candidates:
-        logger.warning("⚠️ 후보 이미지 없음")
-        return JSONResponse({"success": False, "error": "No candidate images"}, status_code=404)
-    logger.info("✅ 후보 이미지 2개 반환 성공")
-    return {"success": True, "candidates": candidates}
-
-@image_router.post("/")
-async def select_image(selection: int = Form(...)) -> Dict[str, Any]:
-    """
-    사용자가 선택한 후보 이미지(1,2) 기록 (FormData: selection=1 or 2)
-    """
-    logger.debug(f"🛠️ select_image 진입 - 선택값: {selection}")
-    global selected_image_idx
-    candidates = latest_image_gen_result.get("candidate_images")
-    if not candidates:
-        logger.warning("⚠️ 후보 이미지 없음 - 선택 기록 실패")
-        return {"success": False, "error": "No candidate images"}
-    if selection not in [1, 2]:
-        logger.warning(f"⚠️ 잘못된 선택값: {selection}")
-        return {"success": False, "error": "Invalid selection"}
-    selected_image_idx = selection - 1
-    selected_path = candidates[selected_image_idx]
-    logger.info(f"✅ 이미지 선택 기록: {selected_path}")
-    return {"success": True, "selected_image": selected_path}
-
-# ---- 3. output 라우터 (상세페이지 생성/조회) ----
-@output_router.post("/")
-async def generate_detail_page() -> Dict[str, Any]:
-    """
-    차별점, 선택이미지 기반 텍스트 생성 및 상세페이지 생성 (전체 파이프라인)
+    차별점/선택이미지 포함 product dict → 텍스트/상세페이지 생성 + session_id 추가
     """
     logger.debug("🛠️ generate_detail_page 진입")
-    global latest_detail_page_html, latest_detail_page_path, latest_product
-
     try:
-        product = latest_product
-        if not product:
-            logger.error("❌ 상품 정보 없음")
-            return {"success": False, "error": "상품 정보 없음"}
-
-        # 차별점 분석 (다시 필요하면 실행)
-        differences = []
-        if latest_diff_result:
-            differences = latest_diff_result.get("differences", [])
-        if not differences:
-            differences = await competitor_main(product)
-
-        # 텍스트 상세페이지 생성
-        output_path = "backend/data/output"
-        session_id = text_generator_main(product, differences, output_path)
-
-        # 최종 상세페이지 생성
-        page_generator_main(product, session_id)
-
-        # 선택 이미지
-        candidates = latest_image_gen_result.get("candidate_images")
-        selected_image = None
-        if candidates and selected_image_idx is not None:
-            selected_image = candidates[selected_image_idx]
-
-        msg = f"상세페이지 전체 생성 완료 (session_id={session_id})"
-        logger.info(f"✅ {msg}")
-        return {
-            "success": True,
-            "session_id": session_id,
-            "differences": differences,
-            "selected_image": selected_image,
-            "msg": msg
-        }
+        session_id = text_generator_main(product)
+        product["session_id"] = session_id
+        page_generator_main(product)
+        logger.info(f"✅ 상세페이지 생성 완료 (session_id={session_id})")
+        return product
     except Exception as e:
         logger.error(f"❌ generate_detail_page 예외: {e}")
         return {"success": False, "error": str(e)}
 
-@output_router.get("/")
-async def get_detail_page():
+@output_router.get(
+    "/path",
+    summary="생성된 상세페이지 경로 조회",
+    description="session_id를 통해 생성된 상세페이지의 HTML과 PNG 파일 경로를 반환합니다."
+)
+async def get_detail_page(
+    product: Dict[str, Any] = Body(...)
+):
     """
-    최종 상세페이지 HTML 반환 (파일이 없으면 404)
+    session_id로 결과 파일(html+png) 경로 반환
     """
-    logger.debug("🛠️ get_detail_page 진입")
-    try:
-        return FileResponse(
-            latest_detail_page_path,
-            media_type="text/html"
-        )
-    except FileNotFoundError:
-        logger.warning("⚠️ 상세페이지 파일 없음")
-        return JSONResponse({"success": False, "error": "상세페이지 없음"}, status_code=404)
+    session_id = product["session_id"]
+    logger.debug(f"🛠️ get_detail_page 진입 - session_id={session_id}")
+    result_dir = "backend/data/result"
+    html_path = os.path.join(result_dir, f"page_{session_id}.html")
+    image_path = os.path.join(result_dir, f"page_{session_id}.png")
+    if not os.path.isfile(html_path) or not os.path.isfile(image_path):
+        logger.warning(f"⚠️ 결과 파일 없음: {html_path}, {image_path}")
+        return JSONResponse({"success": False, "error": "상세페이지 결과 없음"}, status_code=404)
+    return {
+        "success": True,
+        "html_path": html_path,
+        "image_path": image_path
+    }
 
-# ---- 앱 라우터 등록 ----
-app.include_router(input_router)
-app.include_router(image_router)
-app.include_router(output_router)
+@output_router.get(
+    "/download",
+    summary="상세페이지 파일 다운로드",
+    description="session_id와 파일 타입(html 또는 png)을 기반으로 생성된 상세페이지 결과물을 다운로드합니다."
+)
+async def download_detail_file(
+    product: Dict[str, Any] = Body(...),
+    file_type: str = Query(..., description="html 또는 png")
+):
+    """
+    session_id 기반 상세페이지 파일 다운로드 (html/png)
+    """
+    session_id = product["session_id"]
+    result_dir = "backend/data/result"
+    ext = ".html" if file_type == "html" else ".png"
+    file_path = os.path.join(result_dir, f"page_{session_id}{ext}")
+    if not os.path.isfile(file_path):
+        return JSONResponse({"success": False, "error": f"{file_type} 파일 없음"}, status_code=404)
+    return FileResponse(file_path, filename=os.path.basename(file_path))

@@ -136,7 +136,7 @@ def process_input_via_api(form_data: Dict[str, Any], uploaded_files=None) -> Opt
             # multipart/form-data 요청으로 전송
             logger.debug("🛠️ API 요청 전송 (다중 이미지)")
             response = requests.post(
-                "http://localhost:8010/api/input/process-multiple",
+                "http://localhost:8010/input/process-multiple",
                 data=form_data,
                 files=files,
                 timeout=30
@@ -145,7 +145,7 @@ def process_input_via_api(form_data: Dict[str, Any], uploaded_files=None) -> Opt
             logger.debug("🛠️ 이미지 없는 JSON 요청 처리")
             # 이미지가 없는 경우 JSON 요청
             response = requests.post(
-                "http://localhost:8010/api/input/process-json",
+                "http://localhost:8010/input/process-json",
                 json=form_data,
                 timeout=30
             )
@@ -205,9 +205,9 @@ def display_product_summary(product_data: Dict[str, Any]):
     with col2:
         st.write(f"**특징:** {product_data['features']}")
         st.write(f"**CSS 타입:** {product_data['css_type']}")
-        if product_data.get('image_path'):
-            st.write(f"**이미지:** {len(product_data['image_path'])}개")
-            for i, img_path in enumerate(product_data['image_path']):
+        if product_data.get('image_path_list'):
+            st.write(f"**이미지:** {len(product_data['image_path_list'])}개")
+            for i, img_path in enumerate(product_data['image_path_list']):
                 st.write(f"  - 이미지 {i+1}: {img_path}")
 
 def check_server_status():
@@ -258,6 +258,7 @@ def main():
             name = st.text_input(
                 "상품명 *",
                 placeholder="예: 우일 여성 여름 인견 7부 블라우스",
+                value="롤프 남성 정장자켓 수트마이 양복상의",
                 help="상품의 정확한 이름을 입력해주세요."
             )
             # 상품명 오류 표시
@@ -267,6 +268,7 @@ def main():
             category = st.text_input(
                 "카테고리 *",
                 placeholder="예: 블라우스",
+                value="양복",
                 help="상품이 속하는 카테고리를 입력해주세요."
             )
             # 카테고리 오류 표시
@@ -276,7 +278,8 @@ def main():
             brand = st.text_input(
                 "브랜드명 *",
                 placeholder="예: 우일",
-                help="상품의 브랜드명을 입력해주세요."
+                value="롤프",
+                help="상품의 브랜드명을 입력해주세요." 
             )
             # 브랜드 오류 표시
             if 'validation_errors' in st.session_state and 'brand' in st.session_state.validation_errors:
@@ -287,7 +290,7 @@ def main():
                 "가격 (원) *",
                 min_value=0,
                 max_value=10000000,
-                value=0,
+                value=58000,
                 step=1000,
                 help="상품의 가격을 입력해주세요."
             )
@@ -307,6 +310,7 @@ def main():
         features = st.text_area(
             "상품 특징 *",
             placeholder="예: 인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감",
+            value="꼼꼼한 박음질, 고급스러운 원단, 클래식한 디자인",
             height=100,
             help="상품의 주요 특징을 입력해주세요."
         )

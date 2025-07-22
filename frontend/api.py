@@ -73,7 +73,7 @@ class APIClient:
                 logger.debug("🛠️ 이미지 파일과 함께 요청")
                 files = {"image": image_file}
                 data = form_data
-                result = self._make_request("POST", "/api/input/process", files=files, data=data)
+                result = self._make_request("POST", "/input/process", files=files, data=data)
             else:
                 # JSON 데이터만 전송
                 logger.debug("🛠️ JSON 데이터만으로 요청")
@@ -108,7 +108,7 @@ class APIClient:
         """현재 설정 조회"""
         logger.debug("🛠️ 현재 설정 조회 시작")
         
-        result = self._make_request("GET", "/api/input/config")
+        result = self._make_request("GET", "/input/config")
         
         if result:
             logger.info("✅ 현재 설정 조회 완료")
@@ -121,7 +121,7 @@ class APIClient:
         """설정 파일 유효성 검증"""
         logger.debug("🛠️ 설정 파일 유효성 검증 시작")
         
-        result = self._make_request("POST", "/api/input/config/validate")
+        result = self._make_request("POST", "/input/config/validate")
         
         if result:
             is_valid = result.get("data", {}).get("is_valid", False)
@@ -211,6 +211,24 @@ def example_usage():
             st.json(validation_result)
         else:
             st.error("설정 검증을 수행할 수 없습니다.")
+
+def analyze_product(product_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """상품 분석 및 이미지 생성 API 호출"""
+    logger.debug("🛠️ 상품 분석 API 호출 함수")
+    result = api_client._make_request("POST", "/process/analyze-product", json=product_data)
+    return result
+
+def compose_images(composition_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """이미지 합성 API 호출"""
+    logger.debug("🛠️ 이미지 합성 API 호출 함수")
+    result = api_client._make_request("POST", "/input/compose", json=composition_data)
+    return result
+
+def generate_detail_page(generation_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """상세페이지 생성 API 호출"""
+    logger.debug("🛠️ 상세페이지 생성 API 호출 함수")
+    result = api_client._make_request("POST", "/output/create-page", json=generation_data)
+    return result
 
 if __name__ == "__main__":
     logger.debug("🛠️ API 모듈 직접 실행")

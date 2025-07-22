@@ -237,6 +237,13 @@ backend/models/RealVisXL_V4.0/*
 backend/models/sdxl-vae-fp16-fix/*
 backend/models/stable-diffusion-xl-1.0-inpainting-0.1/*
 ys/
+# 대형 모델 파일
+*.safetensors
+*.ckpt
+
+# 중복 경로 제거 및 명확화
+backend/backend/models/
+!backend/backend/models/__init__.py
 
 # LSP config files
 pyrightconfig.json

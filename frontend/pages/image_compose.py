@@ -8,13 +8,173 @@ import requests
 import time
 import requests
 from typing import List
+import threading
+import asyncio
+from datetime import datetime
+import uuid
 
 # 로거 임포트 추가
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from utils.logger import get_logger
 
+# API 클라이언트 임포트
+sys.path.append(str(Path(__file__).parent.parent))
+from api import analyze_product, compose_images, generate_detail_page
+
 # 로거 설정
 logger = get_logger(__name__)
+
+# 간단한 전역 상태 관리
+analysis_status = "idle"  # idle, running, completed, failed
+analysis_result = None
+analysis_start_time = None
+
+def analyze_product_async(product_data: Dict[str, Any]):
+    """백그라운드에서 상품 분석을 수행하는 함수"""
+    global analysis_status, analysis_result, analysis_start_time
+    
+    try:
+        logger.info("🚀 백그라운드 상품 분석 시작")
+        analysis_status = "running"
+        analysis_start_time = datetime.now()
+        
+        # API 호출
+        result = analyze_product(product_data)
+        
+        duration = (datetime.now() - analysis_start_time).total_seconds()
+        logger.info(f"🛠️ 상품 분석 API 호출 결과 (소요시간: {duration:.2f}초): {result}")
+        
+        if result and result.get('success'):
+            logger.info("✅ 백그라운드 상품 분석 성공")
+            analysis_status = "completed"
+            analysis_result = result
+        else:
+            logger.error(f"❌ 백그라운드 상품 분석 실패: {result}")
+            analysis_status = "failed"
+            analysis_result = result or {"success": False, "error": "API 응답 없음"}
+            
+    except Exception as e:
+        logger.error(f"❌ 백그라운드 상품 분석 중 예외 발생: {str(e)}")
+        analysis_status = "failed"
+        analysis_result = {"success": False, "error": str(e)}
+            
+    except Exception as e:
+        logger.error(f"❌ 백그라운드 상품 분석 중 예외 발생: {str(e)}")
+        background_tasks[task_id] = {
+            "status": "error",
+            "result": {"success": False, "error": str(e)},
+            "start_time": start_time,
+            "end_time": datetime.now(),
+            "error": str(e)
+        }
+
+def handle_async_product_analysis():
+    """비동기 상품 분석을 처리하는 메인 함수"""
+    global analysis_status, analysis_result, analysis_start_time
+    
+    # 처리된 데이터가 있는지 확인
+    if 'processed_data' not in st.session_state or not st.session_state.processed_data:
+        return
+    
+    # 이미 분석을 시작했는지 세션에서 확인 (무한루프 방지)
+    if 'analysis_started' not in st.session_state:
+        st.session_state.analysis_started = False
+    
+    if analysis_status == "idle" and not st.session_state.analysis_started:
+        # 자동으로 분석 시작
+        logger.info("🚀 상품 분석 자동 시작")
+        st.info("🚀 상품 분석을 시작합니다...")
+        
+        # 상태를 즉시 변경하여 무한루프 방지
+        analysis_status = "running"
+        analysis_start_time = datetime.now()
+        st.session_state.analysis_started = True
+        
+        # 스레드로 백그라운드 실행
+        thread = threading.Thread(
+            target=analyze_product_async,
+            args=(st.session_state.processed_data,)
+        )
+        thread.daemon = True
+        thread.start()
+        
+        st.rerun()
+    
+    elif analysis_status == "running":
+        # 진행 중 상태
+        st.info("🔄 상품 분석이 백그라운드에서 진행 중입니다...")
+        
+        if analysis_start_time:
+            elapsed = (datetime.now() - analysis_start_time).total_seconds()
+            st.write(f"⏱️ 경과 시간: {elapsed:.1f}초")
+        
+        st.write("📊 🔍 분석 중...")
+        
+        # 상태 확인 버튼
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("🔄 상태 확인", help="분석 진행 상태를 확인합니다"):
+                st.rerun()
+    
+    elif analysis_status == "completed":
+        # 완료 상태
+        st.success("✅ 상품 분석이 완료되었습니다!")
+        
+        if analysis_start_time:
+            duration = (datetime.now() - analysis_start_time).total_seconds()
+            st.info(f"⏱️ 분석 소요 시간: {duration:.2f}초")
+        
+        # 결과를 세션에 저장
+        if analysis_result:
+            st.session_state.analysis_result = analysis_result
+            
+            # 결과 요약 표시
+            if analysis_result.get('success') and 'data' in analysis_result:
+                data = analysis_result['data']
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if 'differences' in data and data['differences']:
+                        st.write("🎯 **발견된 차별점:**")
+                        for i, diff in enumerate(data['differences'][:3], 1):
+                            st.write(f"  {i}. {diff}")
+                
+                with col2:
+                    if 'candidate_images' in data and data['candidate_images']:
+                        st.write("🖼️ **생성된 후보 이미지:**")
+                        total_images = sum(len(group) if isinstance(group, list) else 0 
+                                         for group in data['candidate_images'])
+                        st.write(f"  총 {total_images}개 이미지 생성됨")
+        
+        # 재분석 버튼
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col3:
+            if st.button("🔄 재분석", help="상품을 다시 분석합니다"):
+                analysis_status = "idle"
+                analysis_result = None
+                analysis_start_time = None
+                st.session_state.analysis_started = False
+                if 'analysis_result' in st.session_state:
+                    del st.session_state.analysis_result
+                st.rerun()
+    
+    elif analysis_status == "failed":
+        # 실패 상태
+        st.error("❌ 상품 분석에 실패했습니다.")
+        if analysis_result:
+            error_msg = analysis_result.get("error", "알 수 없는 오류")
+            st.error(f"오류 내용: {error_msg}")
+        
+        # 재시도 버튼
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            if st.button("🔄 재시도", help="상품 분석을 다시 시도합니다"):
+                analysis_status = "idle"
+                analysis_result = None
+                analysis_start_time = None
+                st.session_state.analysis_started = False
+                st.rerun()
+    
 
 def load_models_data():
     """models 폴더에서 모델 데이터 로드"""
@@ -90,7 +250,7 @@ def display_user_images(tab_key=""):
     
     processed_data = st.session_state.processed_data
     logger.debug(f"🛠️ 처리된 데이터: {processed_data}")
-    image_paths = processed_data.get('image_path', [])
+    image_paths = processed_data.get('image_path_list', [])
     logger.debug(f"🛠️ 이미지 경로들: {image_paths}")
     
     if not image_paths:
@@ -565,30 +725,21 @@ def show_generation_buttons(selected_user_images, selected_target_image, selecte
                 st.session_state.composition_data = composition_data
                 logger.info(f"✅ {generation_type} 합성 데이터 준비 완료 ({user_count}개 상품)")
                 
-                # 단일 API 호출
+                # API 클라이언트를 사용한 이미지 합성 호출
                 with st.spinner(f"{generation_type} 이미지 합성 중... ({user_count}개 상품 → 1개 결과)"):
                     try:
-                        response = requests.post(
-                            "http://localhost:8010/api/input/compose",
-                            json=composition_data,
-                            timeout=120  # 다중 이미지 처리를 위해 시간 증가
-                        )
+                        result = compose_images(composition_data)
                         
-                        if response.status_code == 200:
-                            result = response.json()
-                            if result.get('success'):
-                                st.success(f"🎉 {generation_type} 이미지 합성이 완료되었습니다! ({user_count}개 상품)")
-                                
-                                # 단일 결과 저장
-                                st.session_state.composition_result = result['data']
-                                
-                            else:
-                                st.error(f"❌ 합성 실패: {result.get('message', '알 수 없는 오류')}")
-                        else:
-                            st.error(f"❌ API 요청 실패: HTTP {response.status_code}")
+                        if result and result.get('success'):
+                            st.success(f"🎉 {generation_type} 이미지 합성이 완료되었습니다! ({user_count}개 상품)")
                             
-                    except requests.exceptions.Timeout:
-                        st.error("❌ 요청 시간 초과. 다중 이미지 합성에는 시간이 걸릴 수 있습니다.")
+                            # 단일 결과 저장
+                            st.session_state.composition_result = result['data']
+                            
+                        else:
+                            error_msg = result.get('message', '알 수 없는 오류') if result else 'API 호출 실패'
+                            st.error(f"❌ 합성 실패: {error_msg}")
+                            
                     except Exception as e:
                         st.error(f"❌ 합성 중 오류: {str(e)}")
         else:
@@ -761,7 +912,7 @@ def display_detail_page_generation_button():
                 key="generate_detail_page"
             ):
                 logger.debug(f"🛠️ 상세페이지 생성 버튼 클릭: {selected_image}")
-                generate_detail_page(selected_image)
+                handle_detail_page_generation(selected_image)
         else:
             st.button(
                 "📄 상세페이지 생성", 
@@ -771,8 +922,8 @@ def display_detail_page_generation_button():
             )
             st.caption("⚠️ 먼저 이미지를 선택해주세요")
 
-def generate_detail_page(selected_image_path: str):
-    """선택된 이미지로 상세페이지 생성"""
+def handle_detail_page_generation(selected_image_path: str):
+    """선택된 이미지로 상세페이지 생성 처리"""
     logger.debug(f"🛠️ 상세페이지 생성 시작: {selected_image_path}")
     
     try:
@@ -784,32 +935,23 @@ def generate_detail_page(selected_image_path: str):
         }
         
         with st.spinner("상세페이지 생성 중... (30초~1분 소요)"):
-            response = requests.post(
-                "http://localhost:8010/api/input/generate-detail-page",
-                json=generation_data,
-                timeout=120
-            )
+            result = generate_detail_page(generation_data)
             
-            if response.status_code == 200:
-                result = response.json()
-                if result.get('success'):
-                    logger.info("✅ 상세페이지 생성 완료")
-                    
-                    # 결과를 세션에 저장
-                    detail_result = result['data']
-                    st.session_state.detail_page_result = detail_result
-                    
-                    st.success("🎉 상세페이지 생성이 완료되었습니다!")
-                    st.info("📄 결과 페이지로 이동합니다...")
-                    
-                    # 결과 페이지로 이동
-                    time.sleep(1)
-                    st.switch_page("pages/result.py")
-                    
-                else:
-                    st.error(f"❌ 상세페이지 생성 실패: {result.get('message', '알 수 없는 오류')}")
+            if result and result.get('success'):
+                logger.info("✅ 상세페이지 생성 완료")
+                
+                # 결과를 세션에 저장
+                detail_result = result['data']
+                st.session_state.detail_page_result = detail_result
+                
+                st.success("🎉 상세페이지 생성이 완료되었습니다!")
+                st.info("📄 결과 페이지로 이동합니다...")
+                
+                # 결과 페이지로 이동
+                time.sleep(1)
+                st.switch_page("pages/result.py")
             else:
-                st.error(f"❌ API 요청 실패: HTTP {response.status_code}")
+                st.error(f"❌ 상세페이지 생성 실패: {result.get('message', '알 수 없는 오류')}")
                 
     except requests.exceptions.Timeout:
         st.error("❌ 요청 시간 초과. 상세페이지 생성에는 시간이 걸릴 수 있습니다.")
@@ -829,6 +971,9 @@ def main():
     
     st.title("🎨 이미지 합성")
     st.markdown("---")
+
+    # 🚀 비동기 상품 분석 처리
+    handle_async_product_analysis()
 
     # 상품 정보 표시
     if 'processed_data' in st.session_state and st.session_state.processed_data:

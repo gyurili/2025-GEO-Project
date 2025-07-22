@@ -10,8 +10,10 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.logger import get_logger
 
-from router.input_router import router as input_router
-from input_handler.core.input_main import InputHandler
+from router.router import input_router
+from router.router import process_router
+from router.router import output_router
+from backend.input_handler.core.input_main import InputHandler
 
 # 로거 설정
 logger = get_logger(__name__)
@@ -73,7 +75,9 @@ logger.debug("🛠️ CORS 미들웨어 설정 완료 (모든 origin 허용)")
 # 라우터 등록
 logger.debug("🛠️ API 라우터 등록 시작")
 app.include_router(input_router)
-logger.debug("🛠️ input_router 등록 완료")
+app.include_router(process_router)
+app.include_router(output_router)
+logger.debug("🛠️ 라우터 등록 완료")
 
 logger.info("✅ FastAPI 애플리케이션 설정 완료")
 
