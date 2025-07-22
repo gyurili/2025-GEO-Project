@@ -14,6 +14,10 @@ from backend.image_generator.prompt_builder import generate_prompts
 from backend.image_generator.hash_utils import generate_cache_key
 from backend.models.model_handler import get_model_pipeline, get_vton_pipeline
 
+"""
+generate_vton는 사용하지 않음
+"""
+
 logger = get_logger(__name__)
 
 class ImgGenPipeline:
