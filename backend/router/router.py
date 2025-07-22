@@ -34,7 +34,7 @@ async def receive_product_info(
     try:
         competitor_task = competitor_main(product)
         img_gen_task = asyncio.to_thread(
-            img_gen_pipeline.generate_image, product, product["image_path_list"]
+            img_gen_pipeline.generate_image, product
         )
         diff_result, candidate_images_result = await asyncio.gather(
             competitor_task, img_gen_task
@@ -118,10 +118,9 @@ async def generate_detail_page(
     """
     logger.debug("🛠️ generate_detail_page 진입")
     try:
-        output_path = "backend/data/result"
-        session_id = text_generator_main(product, output_path)
-        page_generator_main(product, session_id)
+        session_id = text_generator_main(product)
         product["session_id"] = session_id
+        page_generator_main(product)
         logger.info(f"✅ 상세페이지 생성 완료 (session_id={session_id})")
         return product
     except Exception as e:
