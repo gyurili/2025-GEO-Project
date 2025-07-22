@@ -15,6 +15,10 @@ from controlnet_aux import MidasDetector
 from peft import PeftModel
 from utils.logger import get_logger
 
+"""
+get_vton_pipeline는 사용하지 않음
+"""
+
 logger = get_logger(__name__)
 
 load_dotenv()
@@ -222,7 +226,6 @@ def get_model_pipeline(
             )
             model_pipeline.set_ip_adapter_scale(adapter_config["scale"])
             model_pipeline.enable_vae_tiling()
-            model_pipeline.enable_attention_slicing()
             model_pipeline.enable_xformers_memory_efficient_attention()
             logger.info("✅ IP-Adapter 주입 및 메모리 최적화 옵션 적용 완료")
         except Exception as e:

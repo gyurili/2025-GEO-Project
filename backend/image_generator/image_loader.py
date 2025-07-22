@@ -37,40 +37,48 @@ class ImageLoader:
                              오류 발생시 None을 반환.
             str: 파일명
         """
+        image = None
+        filename = None
+
+        # 1. 이미지 로드
         try:
             if image_path.startswith(("http://", "https://")):
                 logger.debug(f"🛠️ URL 이미지 로드 시도: {image_path}")
                 response = requests.get(image_path)
                 response.raise_for_status()
                 image = Image.open(BytesIO(response.content)).convert("RGB")
-                base_filename = os.path.basename(image_path)
+                filename = os.path.basename(image_path)
                 logger.info(f"✅ URL 이미지 로드 완료")
             else:
                 logger.debug(f"🛠️ 로컬 이미지 로드 시도: {image_path}")
                 image = Image.open(image_path).convert("RGB")
-                base_filename = os.path.basename(image_path)
+                filename = os.path.basename(image_path)
                 logger.info(f"✅ 로컬 이미지 로드 완료: {image_path}")
-
-            if target_size:
-                if not (isinstance(target_size, tuple) and len(target_size) == 2):
-                    logger.error(f"❌ target_size는 (width, height) 형태의 튜플이어야 합니다.")
-                    return None, None
-                if not all(isinstance(dim, int) and dim > 0 for dim in target_size):
-                    logger.error(f"❌ target_size의 각 값은 양의 정수여야 합니다.")
-                    return None, None
-                image = image.resize(target_size, Image.LANCZOS)
-                logger.debug(f"✅ 이미지 리사이즈 완료. 크기: {image.size}")
-            return image, base_filename
-            
-        except ValueError as ve:
-            logger.error(f"❌ 잘못된 인자값 오류: {ve}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"❌ 네트워크 오류: URL '{image_path}'에서 이미지 로드 실패 - {e}")
             return None, None
         except FileNotFoundError:
-            logger.error(f"❌ 오류: 이미지 파일 '{image_path}'을(를) 찾을 수 없습니다.")
-            return None, None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"❌ 오류: URL '{image_path}'에서 이미지 로드 중 네트워크 문제 발생: {e}") 
+            logger.error(f"❌ 파일을 찾을 수 없음: '{image_path}'")
             return None, None
         except Exception as e:
-            logger.error(f"❌ 오류: 이미지 로드/처리 중 오류 발생: {e}")
+            logger.error(f"❌ 이미지 로드 중 일반 오류: {e}")
             return None, None
+        
+
+        # 2. 리사이즈 (필요한 경우)
+        if target_size:
+            try:
+                if not (isinstance(target_size, tuple) and len(target_size) == 2):
+                    raise ValueError("target_size는 (width, height) 형태의 튜플이어야 합니다.")
+                if not all(isinstance(dim, int) and dim > 0 for dim in target_size):
+                    raise ValueError("target_size의 각 값은 양의 정수여야 합니다.")
+                image = image.resize(target_size, Image.LANCZOS)
+                logger.debug(f"✅ 이미지 리사이즈 완료: {image.size}")
+            except ValueError as ve:
+                logger.error(f"❌ 잘못된 리사이즈 인자: {ve}")
+                return None, None
+            except Exception as e:
+                logger.error(f"❌ 이미지 리사이즈 실패: {e}")
+                return None, None
+
+        return image, filename
