@@ -15,11 +15,6 @@ peft
 bitsandbytes
 playwright
 
-rembg
-onnxruntime
-controlnet_aux
-mediapipe
-
 # 이학진
 pymysql
 undetected_chromedriver
@@ -28,23 +23,17 @@ fake_useragent
 cryptography
 
 # 정영선
+pyyaml
+torch
 pillow
-requests
+diffusers
 rembg
 onnxruntime
-torch
-transformers
-diffusers
-accelerate
 dotenv
-sentencepiece
 openai
-ip-adapter
-uvicorn
-fastapi
-streamlit
-python-multipart
-peft
+transformers
 controlnet_aux
-basicsr
+peft
+mediapipe
 xformers
+accelerate

@@ -4,7 +4,7 @@ from PIL import Image
 from rembg import remove
 
 from utils.logger import get_logger
-from .image_loader import ImageLoader
+from backend.image_generator.image_loader import ImageLoader
 
 logger = get_logger(__name__)
 
@@ -24,7 +24,6 @@ class BackgroundHandler:
     def remove_background(
             self, 
             input_image: Image.Image, 
-            original_filename: str, 
             output_dir: str = "backend/data/output/"
         ) -> Image.Image:
         """
@@ -33,7 +32,6 @@ class BackgroundHandler:
 
         Args:
             input_image (PIL.Image.Image): 배경을 제거할 제품 이미지 객체 (RGB 또는 RGBA 모드)
-            original_filename (str): 이미지 파일명 (출력 파일명 생성에 사용).
             output_dir (str, optional): 배경이 제거된 이미지를 저장할 경로. 기본 경로는 'backend/data/output/'에 저장
         
         Returns:
@@ -51,27 +49,10 @@ class BackgroundHandler:
                                   bgcolor=(0, 0, 0, 0),
                                   alpha_matting_foreground_threshold=255,
                                   alpha_matting_background_threshold=0,
-                                  alpha_matting_erode_size=100)
+                                  alpha_matting_erode_size=100)            
 
-            # if output_image.getbbox():
-            #     logger.debug("🛠️ 제거된 배경에 맞게 사이즈 조정")
-            #     output_image = output_image.crop(output_image.getbbox())
-            # else:
-            #     logger.warning("⚠️ 배경 제거 후 이미지가 비어있습니다. 원본 이미지가 투명 배경이 아닌지 확인하세요.")
-            #     return None
-            
-            os.makedirs(output_dir, exist_ok=True)
-
-            # 파일명과 확장자 분리 (예: 'cake', '.jpg')
-            name_without_ext, _ = os.path.splitext(original_filename)
-            # 새 확장자를 붙여 최종 파일명 생성 (예: 'cake_removed_bg.png')
-            filename = f"{name_without_ext}_removed_bg.png"
-
-            save_path = os.path.join(output_dir, filename)
-            output_image.save(save_path)
-
-            logger.info(f"✅ 배경 제거 완료. 결과 이미지가 {save_path}에 저장되었습니다.")
-            return output_image, save_path
+            logger.info(f"✅ 배경 제거 완료.")
+            return output_image
         except Exception as e:
             logger.error(f"❌ 배경 제거 중 오류 발생: {e}")
             return None

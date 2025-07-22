@@ -8,7 +8,6 @@ logger = get_logger(__name__)
 
 def generate_cache_key(
     product: dict,
-    image_path: str,
     prompt_mode: str,
     seed: int,
     extra: dict = None
@@ -18,7 +17,6 @@ def generate_cache_key(
 
     Args:
         product (dict): 상품 정보 (이름, 키워드 등)
-        image_path (str): 입력 이미지 경로
         prompt_mode (str): 프롬프트 모드
         seed (int): 랜덤 시드
         extra (dict, optional): 추가 파라미터 (예: width, height 등)
@@ -28,7 +26,7 @@ def generate_cache_key(
     """
     data = {
         "product_info": product,
-        "image_name": os.path.basename(image_path),
+        "image_name": [os.path.basename(image) for image in product.get("image_path_list", [])],
         "prompt_mode": prompt_mode,
         "seed": seed,
         "extra": extra or {}

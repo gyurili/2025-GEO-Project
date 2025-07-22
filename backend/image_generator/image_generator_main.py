@@ -3,19 +3,16 @@ import os
 import sys
 import datetime
 import torch
+import gc
 from PIL import Image
 from diffusers.utils import load_image
 
 from utils.logger import get_logger
-from .image_loader import ImageLoader
-from .background_handler import BackgroundHandler
-from .prompt_builder import generate_prompts
-from .hash_utils import generate_cache_key
+from backend.image_generator.image_loader import ImageLoader
+from backend.image_generator.background_handler import BackgroundHandler
+from backend.image_generator.prompt_builder import generate_prompts
+from backend.image_generator.hash_utils import generate_cache_key
 from backend.models.model_handler import get_model_pipeline, get_vton_pipeline
-
-'''
-TODO: 전체 리팩토링
-'''
 
 logger = get_logger(__name__)
 
@@ -89,17 +86,15 @@ class ImgGenPipeline:
     
     def generate_image(self,
             product: dict,
-            image_path: str,
             prompt_mode: str = "human",
             output_dir: str = "./backend/data/output/",
             seed: int = 42,
         ) -> dict:
         """
-        주어진 상품 정보 및 입력 이미지로부터 새로운 이미지를 생성합니다.
+        product['image_path_list']의 각 이미지를 기반으로 새로운 이미지를 생성합니다.
 
         Args:
             product (dict): 상품 정보를 담은 딕셔너리 (예: {"name": "셔츠", ...})
-            image_path (str): 입력 이미지 파일 경로
             prompt_mode (str): 프롬프트 생성 모드 ("human" 또는 "background"), 기본값 "human"
             output_dir (str): 생성된 이미지를 저장할 디렉토리 경로, 기본값 "./backend/data/output/"
             seed (int): 랜덤 시드 값 (재현성 확보용), 기본값 42
@@ -110,11 +105,57 @@ class ImgGenPipeline:
                   실패 시 {"image": None, "image_path": None} 반환.
         """
         logger.debug("🛠️ generate_image() 시작")
+        result = {"image_paths": []}
+
+        image_path_list = product.get("image_path_list", [])
+        if not image_path_list:
+            logger.error("❌ 이미지 리스트가 비어 있습니다.")
+            return result
+
+        for idx, image_path in enumerate(image_path_list):
+            logger.debug(f"🛠️ {idx+1}/{len(image_path_list)}번째 이미지 생성 시작: {image_path}")
+            single_result = self._generate_single_image(
+                product=product,
+                image_path=image_path,
+                prompt_mode=prompt_mode,
+                output_dir=output_dir,
+                seed=seed,
+            )
+            if single_result["image"]:
+                result["image_paths"].append(single_result["image_path"])
+                logger.info(f"✅ {idx+1}/{len(image_path_list)}번째 이미지 생성 완료: {single_result['image_path']}")
+
+                # 메모리 해제
+                del single_result
+                del loaded_image
+                del processed_image
+                gc.collect()
+                torch.cuda.empty_cache()
+            else:
+                logger.error(f"❌ {idx+1}/{len(image_path_list)}번째 이미지 생성 실패: {image_path}")
+        
+        logger.info(f"✅ 총 {len(result['image_paths'])}/{len(image_path_list)} 이미지 생성 완료")
+        return result
+
+
+    def _generate_single_image(
+        self,
+        product: dict,
+        image_path: str,
+        prompt_mode: str,
+        output_dir: str,
+        seed: int,
+    ) -> dict:
+        """
+        내부용 단일 이미지 생성 메서드,
+        """
         result = {"image": None, "image_path": None}
 
         try:
+            logger.debug(f"🛠️ _generate_single_image() 시작: {image_path}")
+
             # 0. 캐시 체크
-            cache_key = generate_cache_key(product, image_path, prompt_mode, seed)
+            cache_key = generate_cache_key(product, prompt_mode, seed)
             name_without_ext, _ = os.path.splitext(os.path.basename(image_path))
             os.makedirs(output_dir, exist_ok=True)
             save_path = os.path.join(output_dir, f"{cache_key}_{name_without_ext}.png")
@@ -133,10 +174,7 @@ class ImgGenPipeline:
 
             # 2. 배경 제거
             logger.debug(f"🛠️ 배경 제거 시작")
-            processed_image, _ = self.background_handler.remove_background(
-                input_image=loaded_image,
-                original_filename=filename,
-            )
+            processed_image = self.background_handler.remove_background(input_image=loaded_image)
             if processed_image is None:
                 logger.error("❌ 배경 제거에 실패했습니다. 처리를 중단합니다.")
                 return result
@@ -169,15 +207,15 @@ class ImgGenPipeline:
             logger.debug("🛠️ 모델 파이프라인으로 이미지 생성 시작")
             try:
                 result_image = self.diffusion_pipeline(
-                    prompt=prompts["background_prompt"],       # 생성할 이미지의 주요 텍스트 설명 (이미지 품질과 콘셉트에 직접적 영향)
-                    negative_prompt=prompts["negative_prompt"],# 생성 시 배제할 요소(예: 'blurry', 'text', 'logo') → 품질 안정성 향상
-                    ip_adapter_image=processed_image,          # IP-Adapter 입력 이미지 (제품 구조, 색상, 특징 반영) → 유사성 높임
-                    width=512,                                 # 출력 이미지 가로 크기 (해상도 ↑ 시 품질 ↑, VRAM ↑, 속도 ↓)
-                    height=768,                                # 출력 이미지 세로 크기 (동일하게 해상도 영향)
-                    num_inference_steps=99,                    # 디퓨전 스텝 수 (높을수록 디테일 ↑, 속도 ↓, VRAM ↑) → 권장 30~50
-                    guidance_scale=7,                          # 프롬프트 강조 강도 (높으면 프롬프트 반영 ↑, 낮으면 창의성 ↑), 너무 높으면 비현실적 아티팩트 발생 가능 (보통 5~8)
-                    num_images_per_prompt=1,                   # 한 번의 추론에서 생성할 이미지 개수 (↑시 VRAM 부담 커짐)
-                    generator=generator,                       # 랜덤 시드 고정 (재현성 확보) → 동일 설정 시 항상 같은 이미지 생성
+                    prompt=prompts["background_prompt"],        # 생성할 이미지의 주요 텍스트 설명 (이미지 품질과 콘셉트에 직접적 영향)
+                    negative_prompt=prompts["negative_prompt"], # 생성 시 배제할 요소(예: 'blurry', 'text', 'logo') → 품질 안정성 향상
+                    ip_adapter_image=processed_image,           # IP-Adapter 입력 이미지 (제품 구조, 색상, 특징 반영) → 유사성 높임
+                    width=768,                                  # 출력 이미지 가로 크기 (해상도 ↑ 시 품질 ↑, VRAM ↑, 속도 ↓)
+                    height=768,                                 # 출력 이미지 세로 크기 (동일하게 해상도 영향)
+                    num_inference_steps=40,                     # 디퓨전 스텝 수 (높을수록 디테일 ↑, 속도 ↓, VRAM ↑) → 권장 30~50
+                    guidance_scale=5,                           # 프롬프트 강조 강도 (높으면 프롬프트 반영 ↑, 낮으면 창의성 ↑), 너무 높으면 비현실적 아티팩트 발생 가능 (보통 5~8)
+                    num_images_per_prompt=1,                    # 한 번의 추론에서 생성할 이미지 개수 (↑시 VRAM 부담 커짐)
+                    generator=generator,                        # 랜덤 시드 고정 (재현성 확보) → 동일 설정 시 항상 같은 이미지 생성
                 ).images[0]
                 logger.info("✅ 이미지 생성 성공")
             except Exception as e:
@@ -187,13 +225,13 @@ class ImgGenPipeline:
             result_image.save(save_path)
             logger.info(f"✅ 이미지가 {save_path}에 생성되었습니다.")
 
-            logger.debug("✅ generate_image() 완료")
+            logger.debug("✅ _generate_single_image() 완료")
             return {"image": result_image, "image_path": save_path}
 
         except Exception as e:
-            logger.error(f"❌ generate_image() 실패: {e}")
-        
-        return result
+            logger.error(f"❌ _generate_single_image() 실패: {e}")
+            return result
+
 
     def generate_vton(self,
         model_image_path: str, 
