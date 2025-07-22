@@ -47,6 +47,7 @@ def generate_openai(product: dict) -> dict:
         prompt_parts.insert(1, diff_prompt)
         
     # 이미지 반영
+    image_prompt_lines = []
     image_paths = product.get("image_path_list", [])
 
     if image_paths:
@@ -57,19 +58,20 @@ def generate_openai(product: dict) -> dict:
         image_prompt_lines.append("각 이미지는 적절한 섹션에 분산하여 배치해주세요.")
 
     prompt_parts += image_prompt_lines
-    prompt_parts += [
-        "모든 정보를 HTML로 출력해주세요. 결과는 <html> ~ </html> 태그 안에 있어야 합니다"
-    ]
+    prompt_parts.append("모든 정보를 HTML로 출력해주세요. 결과는 <html> ~ </html> 태그 안에 있어야 합니다")
     
     prompt = "\n".join(prompt_parts)
     logger.info("🛠️ OpenAI 요청 시작")
 
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.9
-    )
-    logger.info("✅ OpenAI API 응답 수신 완료")
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.9
+        )
+        logger.info("✅ OpenAI API 응답 수신 완료")
+    except Exception as e:
+        raise RuntimeError(f"❌ OpenAI API 요청 실패: {e}")
 
     html_text = response.choices[0].message.content
     html_text = clean_response(html_text)
@@ -83,6 +85,12 @@ hf_model = None
 hf_tokenizer = None
 
 def load_hf_model():
+    """
+    HuggingFace 모델과 토크나이저를 로컬에서 로딩합니다.
+
+    Returns:
+        tuple: (pipeline 모델 객체, 토크나이저 객체)
+    """
     model_id = "Markr-AI/Gukbap-Qwen2.5-7B"
     lora_path = "backend/models/adapter"
     model = get_model_pipeline(
@@ -97,11 +105,24 @@ def load_hf_model():
     return model, tokenizer
 
 def generate_hf(product: dict) -> dict:
+    """
+    제공된 제품 정보를 바탕으로 HuggingFace를 통해 상세페이지 HTML을 생성합니다.
+
+    Args:
+        product (dict): 상세페이지 생성에 필요한 제품 정보가 담긴 딕셔너리
+
+    Returns:
+        dict: 생성된 상세페이지 HTML이 포함된 딕셔너리
+    """
     global hf_model, hf_tokenizer
     
     if hf_model is None:
-        logger.info("🛠️ HuggingFace 모델 로딩 중")
-        hf_model, hf_tokenizer = load_hf_model()
+        try:
+            logger.info("🛠️ HuggingFace 모델 로딩 중")
+            hf_model, hf_tokenizer = load_hf_model()
+            logger.info("✅ 모델 로딩 완료")
+        except Exception as e:
+            raise RuntimeError(f"HuggingFace 모델 로딩 실패: {e}")
         
     prompt_parts = [
         system_instruction(product).strip(),
@@ -118,6 +139,7 @@ def generate_hf(product: dict) -> dict:
         prompt_parts.insert(1, diff_prompt)
         
     # 이미지 반영
+    image_prompt_lines = []
     image_paths = product.get("image_path_list", [])
 
     if image_paths:
@@ -137,23 +159,27 @@ def generate_hf(product: dict) -> dict:
     prompt = "\n".join(prompt_parts)
 
     logger.info("🛠️ HuggingFace 요청 시작")
-    inputs = hf_tokenizer(prompt, return_tensors="pt")
-    input_ids = inputs["input_ids"].to(hf_model.device)
-    attention_mask = inputs["attention_mask"].to(hf_model.device)
+    try:
+        inputs = hf_tokenizer(prompt, return_tensors="pt", truncation=True)
+        input_ids = inputs["input_ids"].to(hf_model.device)
+        attention_mask = inputs["attention_mask"].to(hf_model.device)
 
-    with torch.no_grad():
-        output_ids = hf_model.generate(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            max_new_tokens=2048,
-            do_sample=True,
-            temperature=0.9,
-            top_p=0.95,
-            repetition_penalty=1.1
-        )
+        with torch.no_grad():
+            output_ids = hf_model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                max_new_tokens=2048,
+                do_sample=True,
+                temperature=0.9,
+                top_p=0.95,
+                repetition_penalty=1.1
+            )
 
-    output_text = hf_tokenizer.decode(output_ids[0], skip_special_tokens=True)
-    logger.info("✅ HuggingFace 응답 수신 완료")
+        output_text = hf_tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        logger.info("✅ HuggingFace 상세페이지 생성 완료")
+    except Exception as e:
+        raise RuntimeError(f"HuggingFace 상세페이지 생성 실패: {e}")
+    
     html_text = clean_response(output_text, strict=True)
     logger.info("✅ 코드 마크다운 블록 제거 완료")
     
