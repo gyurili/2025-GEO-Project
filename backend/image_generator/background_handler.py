@@ -8,6 +8,10 @@ from backend.image_generator.image_loader import ImageLoader
 
 logger = get_logger(__name__)
 
+"""
+remove_background 기능 외에는 사용하지 않음
+"""
+
 
 class BackgroundHandler:
     """
@@ -24,26 +28,25 @@ class BackgroundHandler:
     def remove_background(
             self, 
             input_image: Image.Image, 
-            output_dir: str = "backend/data/output/"
-        ) -> Image.Image:
+        ) -> Image.Image | None:
         """
         'rembg' 라이브러리를 사용하여 입력 이미지(PIL.Image.Image)에서 배경을 제거,
         투명 배경을 가진 PNG 이미지로 저장
 
         Args:
             input_image (PIL.Image.Image): 배경을 제거할 제품 이미지 객체 (RGB 또는 RGBA 모드)
-            output_dir (str, optional): 배경이 제거된 이미지를 저장할 경로. 기본 경로는 'backend/data/output/'에 저장
         
         Returns:
             PIL.Image.Image: 배경이 제거된 이미지 객체 (RGBA 모드)
                              오류 발생시 None 반환
         """
-        logger.debug(f"🛠️ 배경 제거 시작")
+        if input_image is None:
+            logger.error(f"❌ 배경 제거를 위한 입력 이미지 객체가 None입니다.")
+            return None
+
+        
         try:
-            if input_image is None:
-                logger.error(f"❌ 배경 제거를 위한 입력 이미지 객체가 None입니다.")
-                return None
-            
+            logger.debug(f"🛠️ 배경 제거 시작")
             output_image = remove(input_image, 
                                   alpha_matting=True, 
                                   bgcolor=(0, 0, 0, 0),
@@ -53,9 +56,11 @@ class BackgroundHandler:
 
             logger.info(f"✅ 배경 제거 완료.")
             return output_image
+        except RuntimeError as re:
+            logger.error(f"❌ rembg 처리 실패: {re}")
         except Exception as e:
-            logger.error(f"❌ 배경 제거 중 오류 발생: {e}")
-            return None
+            logger.error(f"❌ 예상치 못한 오류: {e}")
+        return None
 
     def add_color_background(
             self, 
