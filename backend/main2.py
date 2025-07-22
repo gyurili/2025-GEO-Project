@@ -11,7 +11,6 @@ logger = get_logger(__name__)
 def main():
     config = load_config()
     product = config["input"]
-    result_path = config["data"]["result_path"]
     
     image_paths = product.get("image_path_list", [])
     image_paths = [f"file://{Path(p).resolve()}" for p in image_paths]
@@ -24,12 +23,12 @@ def main():
     product["differences"] = differences
 
     logger.info("🛠️ 텍스트 상세페이지 생성 시작")
-    session_id = text_generator_main(product, result_path)
+    product = text_generator_main(product)
 
     logger.info("🛠️ 최종 상세페이지 생성 시작")
-    page_generator_main(product, session_id)
+    page_generator_main(product)
 
-    logger.info(f"✅ 전체 파이프라인 완료: session_id = {session_id}")
+    logger.info(f"✅ 전체 파이프라인 완료: session_id = {product['session_id']}")
 
 if __name__ == "__main__":
     main()

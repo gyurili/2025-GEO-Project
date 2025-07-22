@@ -68,7 +68,8 @@ def html_structure_prompt():
 
 def qna_format_prompt():
     return f"""
-    해당 상품에 대해 소비자들이 궁금해할 질문을 예상하고, 상세페이지 내용 중 일부는 Q&A 형식으로 작성해주세요. Q&A는 5개 이상 만들어주세요. FontAwesome 아이콘을 사용하세요.
+    해당 상품에 대해 소비자들이 궁금해할 질문을 예상하고, 상세페이지 내용 중 일부는 Q&A 형식으로 작성해주세요.
+    Q&A는 5개 이상 만들어주세요. FontAwesome 아이콘을 사용하세요.
     """
 
 def quantitative_prompt():
@@ -91,39 +92,43 @@ def storytelling_prompt():
     도널드밀러의 스토리텔링 기법을 사용해서 반드시 다음 구조를 따라주세요:
     
     1. Hero Section (브랜드명, 임팩트 있는 헤드라인)
+    
     2. Problem Section (고객의 고민/문제점 3가지)
+        - "이런 경험 있으신가요?"로 감정적 어필
+        - 고객이 겪는 문제 상황 3가지 제시
+        - 각 문제에 대한 감정적 공감과 이해
+        - 우리 제품이 제공하는 명확한 해결책
+        - 각 문제 상황은 3개의 열로 나열
+    
     3. Guide Section (브랜드가 이해한다는 공감 + 약속)
         - 전체 레이아웃은 2단 그리드로 구성: 왼쪽은 텍스트, 오른쪽은 제품 이미지
         - 왼쪽 텍스트 블록에는 다음 구성 요소를 포함
-            1) 고객의 문제를 공감하고 브랜드가 해결책을 찾았음을 선언하는 임팩트 있는 헤드라인 (예: "{브랜드명}이 해결책을 드립니다")
+            1) 고객의 문제를 공감하고 브랜드가 해결책을 찾았음을 선언하는 임팩트 있는 검정색 헤드라인 (예: "{브랜드명}이 해결책을 드립니다")
             2) 브랜드의 가치와 철학을 설명하는 본문 2~3문단
-            3) 고객이 신뢰할 수 있는 강점을 강조한 포인트박스 2개
+            3) 고객이 신뢰할 수 있는 강점을 강조한 포인트박스 2개, 각각은 다음 스타일을 포함할 것:
+               - `bg-blue-50`, `border-l-4`, `border-blue-600`, `p-6`, `rounded-lg`, `shadow-lg`
+               - 상단엔 소제목 `<h3 class="text-xl font-semibold mb-2 text-blue-700">`, 아래엔 본문 `<p>` 포함
         - 오른쪽에는 제품 이미지 1장을 포함 (`rounded-xl`, `shadow-xl`, `mx-auto`, `max-w-sm` 등으로 스타일 지정)
+    
     4. Product Section (제품 특징)
         - 리스트 전체는 <ul class="grid md:grid-cols-3 gap-10 max-w-6xl mx-auto text-gray-800">로 감싸고, 각 항목은 <li class="bg-white p-6 rounded-xl shadow-lg">로 구성
         - 특징 이름(소제목)은 <blockquote class="text-xl font-semibold mb-3 text-blue-700"> 형식으로 강조, 설명은 그 아래 <p> 태그로 자연스럽게 이어서 작성
+    
     5. Plan Section (선택-주문-배송의 간단한 3단계 프로세스)
         - 각 단계는 FontAwesome 아이콘을 사용하여 시각적으로 표현
         - 아이콘 색은 text-blue-600색으로 구성
+    
     6. Success/Failure Section (선택했을 때 vs 선택하지 않았을 때)
+        - 성공 시나리오와 실패 시나리오를 대비하여 작성
         - 선택했을 때: <i class="fas fa-check text-green-600 mr-2"></i>
         - 선택하지 않았을 때: <i class="fas fa-times text-red-600 mr-2"></i>
-   7. Reviews Section (고객 후기 4개)
+    
+    7. Reviews Section (고객 후기 4개)
         - 총 4개의 고객 후기를 2x2 형태로 배치
         - <div class="grid md:grid-cols-2 gap-10">를 사용해 2열 그리드로 구성
         - 각 후기는 <div class="bg-sky-50 p-6 rounded-xl shadow-lg text-left"> 형식의 카드 스타일로 작성
         - 고객 이름과 직업은 <p class="font-semibold text-blue-700">로 표시
         - <i class="fas fa-star text-yellow-400 mr-1"></i> 아이콘을 반복 사용하여 별 5개를 표현
-    
-    Problem-Agitation-Solution 패턴:
-    1. 고객이 겪는 구체적인 문제 상황 3가지 제시
-    2. 각 문제에 대한 감정적 공감과 이해
-    3. 우리 제품이 제공하는 명확한 해결책
-
-    감정적 어필:
-    - "이런 경험 있으신가요?"
-    - 성공 시나리오 vs 실패 시나리오 대비
-    - 긴급성과 희소성 암시
     """
 
 def modern_design_prompt():
@@ -157,7 +162,7 @@ def modern_design_prompt():
        - 섹션별 충분한 여백 (py-20 이상)
        
     6. <li> 디자인:
-        - <li> 태그는 list 스타일을 제거하고 점 기호(불릿)가 보이지 않도록 처리해주세요.
+        - <li> 태그는 list 스타일을 제거하고, 점 기호(불릿)가 보이지 않도록 처리
         
     7. Hero Section 디자인:
         - 다음 네 가지 요소를 반드시 포함
@@ -168,5 +173,5 @@ def modern_design_prompt():
         - 전체 콘텐츠는 가운데 정렬 (`text-center`, `items-center`)
         - .hero-bg {{ background: linear-gradient(120deg, #48c6ef 0%, #6f86d6 100%); }} 준수
 
-    8. CTA(Call-To-Action) 버튼은 생성하지 마세요.
+    8. CTA(Call-To-Action) 버튼은 생성 금지
     """

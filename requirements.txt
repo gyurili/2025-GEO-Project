@@ -1,24 +1,11 @@
 # 김민준
 
 # 박규리
-# sudo apt install wkhtmltopdf
-# sudo apt install fonts-noto-cjk
-# sudo apt install build-essential
-# sudo apt install python3.10-dev
 openai
 pyyaml
 python-dotenv
-torch
-transformers
-diffusers
-peft
 bitsandbytes
 playwright
-
-rembg
-onnxruntime
-controlnet_aux
-mediapipe
 
 # 이학진
 pymysql
@@ -28,23 +15,17 @@ fake_useragent
 cryptography
 
 # 정영선
+pyyaml
+torch
 pillow
-requests
+diffusers
 rembg
 onnxruntime
-torch
-transformers
-diffusers
-accelerate
 dotenv
-sentencepiece
 openai
-ip-adapter
-uvicorn
-fastapi
-streamlit
-python-multipart
-peft
+transformers
 controlnet_aux
-basicsr
+peft
+mediapipe
 xformers
+accelerate

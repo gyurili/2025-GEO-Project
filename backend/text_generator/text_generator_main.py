@@ -1,13 +1,16 @@
 import os
-import yaml
 from datetime import datetime, timedelta, timezone
 from utils.logger import get_logger
+from utils.config import load_config
 from backend.text_generator.text_generator import generate_openai, generate_hf
 
 logger = get_logger(__name__)
 
 
-def text_generator_main(product: dict, result_path: str):
+def text_generator_main(product: dict):
+    config = load_config()
+    result_path = config["data"]["result_path"]
+    
     engine = product.get("engine", "openai")
     if engine == "openai":
         result = generate_openai(product)
@@ -28,5 +31,6 @@ def text_generator_main(product: dict, result_path: str):
             logger.info(f"✅ HTML 상세페이지 저장 완료: {full_result_path}")
     except Exception as e:
         raise RuntimeError(f"❌ HTML 저장 실패: {e}")
-            
-    return session_id
+    
+    product["session_id"] = session_id
+    return product

@@ -1,8 +1,7 @@
 import os
-import sys
-import yaml
 from playwright.sync_api import sync_playwright
 from utils.logger import get_logger
+from utils.config import load_config
 from backend.page_generator.apply_template import apply_css_template
 from backend.page_generator.convert_image import image_with_playwright
 
@@ -10,14 +9,16 @@ logger = get_logger(__name__)
 base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 
 
-def page_generator_main(product: dict, session_id: str):
-    # 경로 지정
-    css_type = product.get("css_type", 1)
-    engine = product.get("engine", "openai")
+def page_generator_main(product: dict):
+    config = load_config()
+    result_path = config["data"]["result_path"]
     
-    css_template_path = os.path.join(base_dir, f"backend/page_generator/css/type{css_type}.css")
-    html_path = os.path.join(base_dir, "backend/data/result", f"page_{session_id}.html")
-    image_path = os.path.join(base_dir, "backend/data/result", f"page_{session_id}.png")
+    engine = product.get("engine", "openai")
+    session_id = product.get("session_id")
+    
+    css_template_path = os.path.join(base_dir, f"backend/page_generator/css/default.css")
+    html_path = os.path.join(result_path, f"page_{session_id}.html")
+    image_path = os.path.join(result_path, f"page_{session_id}.png")
 
     # 원본 HTML 로드
     try:
