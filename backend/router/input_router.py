@@ -423,3 +423,51 @@ async def health_check():
             status_code=500,
             detail=f"API 상태 확인 실패: {str(e)}"
         )
+        
+@router.post("/generate-detail-page")
+async def generate_detail_page(
+    generation_data: Dict[str, Any]
+):
+    """
+    선택된 이미지로 상세페이지 생성
+    """
+    logger.debug("🛠️ 상세페이지 생성 API 호출")
+    logger.debug(f"🛠️ 생성 데이터: {list(generation_data.keys())}")
+    
+    try:
+        selected_image_path = generation_data.get('selected_image_path')
+        product_data = generation_data.get('product_data')
+        composition_data = generation_data.get('composition_data')
+        
+        if not selected_image_path or not product_data:
+            raise HTTPException(
+                status_code=400,
+                detail="필수 데이터가 누락되었습니다"
+            )
+        
+        # 여기서 기존 백엔드 로직 호출
+        # 예시: detail_page_generator.generate(selected_image_path, product_data)
+        
+        # 임시 응답 (실제 로직으로 교체 필요)
+        result = {
+            'success': True,
+            'html_path': 'backend/data/result/detail_page.html',
+            'image_path': selected_image_path,
+            'generation_time': '2024-07-17 08:30:00'
+        }
+        
+        logger.info("✅ 상세페이지 생성 완료")
+        return {
+            "success": True,
+            "message": "상세페이지 생성이 완료되었습니다",
+            "data": result
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 상세페이지 생성 실패: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"상세페이지 생성 중 오류 발생: {str(e)}"
+        )

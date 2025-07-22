@@ -5,6 +5,9 @@ from typing import Dict, Any, List, Optional
 from pathlib import Path
 import json
 import requests
+import time
+import requests
+from typing import List
 
 # 로거 임포트 추가
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -62,6 +65,17 @@ def load_models_data():
     except Exception as e:
         logger.error(f"❌ 모델 데이터 로드 실패: {e}")
         return {}
+
+
+def load_all_backgrounds_json():
+    project_root = Path(__file__).parent.parent.parent
+    json_path = project_root / "backend" / "data" / "backgrounds" / "json" / "all_backgrounds.json"
+    if not json_path.exists():
+        raise FileNotFoundError(f"배경 json 파일이 없습니다: {json_path}")
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data
+
 
 def display_user_images(tab_key=""):
     """사용자가 업로드한 이미지들 표시 및 다중 선택"""
@@ -369,35 +383,6 @@ def display_generation_options():
         'style': style
     }
 
-def load_backgrounds_data():
-    """backgrounds 폴더에서 배경 데이터 로드"""
-    logger.debug("🛠️ 배경 데이터 로드 시작")
-    
-    backgrounds_dir = Path(__file__).parent.parent.parent / "backend" / "data" / "backgrounds"
-    logger.debug(f"🛠️ 배경 디렉토리: {backgrounds_dir}")
-    
-    backgrounds_data = []
-    
-    if not backgrounds_dir.exists():
-        logger.warning(f"⚠️ 배경 디렉토리가 존재하지 않습니다: {backgrounds_dir}")
-        backgrounds_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"✅ 배경 디렉토리 생성: {backgrounds_dir}")
-        return backgrounds_data
-    
-    try:
-        # 배경 이미지 파일들 찾기
-        for file in backgrounds_dir.iterdir():
-            if file.is_file() and file.suffix.lower() in ['.jpg', '.jpeg', '.png', '.webp']:
-                backgrounds_data.append(str(file))
-                logger.debug(f"🛠️ 배경 이미지 발견: {file.name}")
-        
-        logger.info(f"✅ 배경 데이터 로드 완료: {len(backgrounds_data)}개 배경")
-        return backgrounds_data
-        
-    except Exception as e:
-        logger.error(f"❌ 배경 데이터 로드 실패: {e}")
-        return []
-
 def show_model_generation_tab():
     """모델 이미지 생성 탭"""
     logger.debug("🛠️ 모델 이미지 생성 탭 표시")
@@ -436,88 +421,67 @@ def show_model_generation_tab():
     show_generation_buttons(selected_user_images, selected_model_image, selected_mask_image, generation_options)
 
 def show_background_generation_tab():
-    """배경 이미지 생성 탭"""
-    logger.debug("🛠️ 배경 이미지 생성 탭 표시")
-    
-    # 배경 데이터 로드
-    backgrounds_data = load_backgrounds_data()
-    
+    logger.debug("🛠️ 배경 이미지 생성 탭 표시 (카테고리 기반)")
+
+    backgrounds_json = load_all_backgrounds_json()
+
     col1, col2 = st.columns([1, 1])
-    
+
     with col1:
-        # 1단계: 사용자 이미지 선택
+        # 기존과 동일하게 사용자 이미지 선택
         selected_user_images = display_user_images("background")
-    
+
     with col2:
-        # 2단계: 배경 선택
-        selected_background = display_background_selection(backgrounds_data)
-    
+        # 🟦 카테고리/소분류 선택 → 프롬프트
+        selected_category_info = display_background_category_ui(backgrounds_json)
+
     st.markdown("---")
-    
-    # 전체 생성 옵션 (품질, 스타일 포함)
+
+    # 품질/스타일 옵션(선택)
     generation_options = display_generation_options_full()
     generation_options['type'] = 'background'
-    
-    # 합성 버튼
-    show_generation_buttons(selected_user_images, selected_background, None, generation_options)
+    # 🟦 카테고리 기반 프롬프트 사용
+    generation_options['category'] = selected_category_info['category']
+    generation_options['subcategory'] = selected_category_info['subcategory']
+    generation_options['custom_prompt'] = selected_category_info['prompt']  # 기존 커스텀 대신
 
-def display_background_selection(backgrounds_data: List):
-    """배경 선택 UI"""
-    logger.debug("🛠️ 배경 선택 UI 표시 시작")
+    # 합성 버튼
+    show_generation_buttons(selected_user_images, selected_category_info, None, generation_options)
+
+def display_background_category_ui(backgrounds_json):
+    st.subheader("🗂️ 배경 카테고리/소분류 선택")
     
-    if not backgrounds_data:
-        st.warning("⚠️ 사용 가능한 배경이 없습니다.")
-        st.info("💡 backend/data/backgrounds 폴더에 배경 이미지를 추가해주세요.")
-        return None
+    # 1. 대분류(카테고리) 선택
+    categories = list(backgrounds_json.keys())
+    selected_category = st.selectbox("대분류를 선택하세요", categories, key="category_select")
+
+    # 2. 소분류(항목) 선택
+    sub_items = list(backgrounds_json[selected_category].keys())
+    selected_subcategory = st.selectbox("소분류를 선택하세요", sub_items, key="subcategory_select")
+
+    # 3. 프롬프트/예시 이미지
+    selected_info = backgrounds_json[selected_category][selected_subcategory]
+    prompt = selected_info["prompt"]
+    example_image = selected_info["example_image"]
+
+    # 프로젝트 루트를 기준으로 절대 경로 생성
+    project_root = Path(__file__).parent.parent.parent
+    example_path = project_root / example_image
     
-    st.subheader("🖼️ 배경 선택")
-    
-    selected_background = None
-    if backgrounds_data:
-        # 배경 이미지들을 그리드로 표시
-        cols = st.columns(min(3, len(backgrounds_data)))
-        
-        for i, background_path in enumerate(backgrounds_data):
-            col_idx = i % len(cols)
-            with cols[col_idx]:
-                if os.path.exists(background_path):
-                    # 선택된 배경 이미지인지 확인
-                    current_selected_bg = st.session_state.get('selected_background')
-                    is_selected = current_selected_bg and current_selected_bg['index'] == i
-                    
-                    if is_selected:
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    
-                    st.image(background_path, caption=f"배경 {i+1}", width=200)
-                    
-                    if is_selected:
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    
-                    if st.button("선택", 
-                                key=f"select_background_{i}",
-                                type="primary" if is_selected else "secondary"):
-                        if is_selected:
-                            # 이미 선택된 경우 선택 해제
-                            if 'selected_background' in st.session_state:
-                                del st.session_state.selected_background
-                        else:
-                            # 새로 선택
-                            st.session_state.selected_background = {
-                                'path': background_path,
-                                'index': i
-                            }
-                        logger.debug(f"🛠️ 배경 이미지 선택: {background_path}")
-                        st.rerun()
-                else:
-                    st.error(f"이미지를 찾을 수 없습니다: {background_path}")
-    
-    # 선택된 배경 표시
-    selected_background = st.session_state.get('selected_background')
-    if selected_background:
-        st.success(f"✅ 선택된 배경: 배경 {selected_background['index'] + 1}")
-        return selected_background
-    
-    return None
+    if example_path.exists():
+        st.image(str(example_path), caption="예시 이미지", width=350)
+    else:
+        st.warning("예시 이미지를 찾을 수 없습니다.")
+
+    # 선택 결과 반환
+    return {
+        "category": selected_category,
+        "subcategory": selected_subcategory,
+        "prompt": prompt,
+        "example_image": example_image
+    }
+
+
 
 def display_generation_options_full():
     """전체 이미지 생성 옵션 (배경 생성용)"""
@@ -640,6 +604,219 @@ def show_generation_buttons(selected_user_images, selected_target_image, selecte
             if missing_items:
                 st.warning(f"⚠️ 다음 항목을 선택해주세요: {', '.join(missing_items)}")
 
+def display_result_selection(result: Dict[str, Any]):
+    """단일 합성 결과 표시 및 선택"""
+    logger.debug("🛠️ 단일 합성 결과 표시 시작")
+    
+    # 결과 이미지 표시
+    project_root = Path(__file__).parent.parent.parent
+    result_image_path = project_root / result['result_image_path']
+    
+    if result_image_path.exists():
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.image(str(result_image_path), caption="합성 결과", width=500)
+        
+        # 결과 정보
+        st.write(f"**생성 타입:** {result['generation_type']}")
+        st.write(f"**사용된 이미지 수:** {result['input_images']}개")
+        
+        # 사용된 프롬프트 표시
+        with st.expander("🔍 사용된 프롬프트 보기"):
+            st.code(result['prompt_used'])
+        
+        # 이미지 선택 상태
+        selected_key = 'selected_result_for_detail'
+        if selected_key not in st.session_state:
+            st.session_state[selected_key] = None
+        
+        # 선택 버튼
+        col1, col2, col3 = st.columns([1, 1, 1])
+        with col2:
+            is_selected = st.session_state[selected_key] == result['result_image_path']
+            
+            if st.button(
+                "✅ 선택됨" if is_selected else "⭕ 선택하기",
+                key="select_single_result",
+                type="primary" if is_selected else "secondary",
+                use_container_width=True
+            ):
+                if is_selected:
+                    st.session_state[selected_key] = None
+                else:
+                    st.session_state[selected_key] = result['result_image_path']
+                st.rerun()
+        
+        # 상세페이지 생성 버튼
+        display_detail_page_generation_button()
+        
+        # 다운로드 버튼
+        with open(result_image_path, "rb") as file:
+            st.download_button(
+                label="📥 결과 이미지 다운로드",
+                data=file.read(),
+                file_name=result_image_path.name,
+                mime="image/png",
+                use_container_width=True
+            )
+    else:
+        st.error("결과 이미지를 찾을 수 없습니다.")
+
+def display_multiple_results_selection(results: List[Dict[str, Any]]):
+    """다중 합성 결과 표시 및 선택"""
+    logger.debug(f"🛠️ 다중 합성 결과 표시 시작: {len(results)}개")
+    
+    if not results:
+        st.warning("표시할 결과가 없습니다.")
+        return
+    
+    st.write(f"**생성된 결과: {len(results)}개**")
+    st.write("마음에 드는 이미지를 선택한 후 상세페이지를 생성하세요.")
+    
+    # 선택된 결과 상태 관리
+    selected_key = 'selected_result_for_detail'
+    if selected_key not in st.session_state:
+        st.session_state[selected_key] = None
+    
+    project_root = Path(__file__).parent.parent.parent
+    
+    # 결과들을 그리드로 표시
+    cols_per_row = 3
+    for i in range(0, len(results), cols_per_row):
+        cols = st.columns(cols_per_row)
+        
+        for j, result in enumerate(results[i:i+cols_per_row]):
+            result_idx = i + j
+            with cols[j]:
+                result_image_path = project_root / result['result_image_path']
+                
+                if result_image_path.exists():
+                    # 선택된 이미지인지 확인
+                    is_selected = st.session_state[selected_key] == result['result_image_path']
+                    
+                    # 선택된 이미지는 테두리 표시
+                    if is_selected:
+                        st.markdown(
+                            '<div style="border: 3px solid #FF6B6B; border-radius: 10px; padding: 5px;">',
+                            unsafe_allow_html=True
+                        )
+                    
+                    st.image(str(result_image_path), caption=f"결과 {result_idx + 1}", width=250)
+                    
+                    if is_selected:
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    # 개별 선택 버튼
+                    if st.button(
+                        "✅ 선택됨" if is_selected else "⭕ 선택",
+                        key=f"select_result_{result_idx}",
+                        type="primary" if is_selected else "secondary",
+                        use_container_width=True
+                    ):
+                        if is_selected:
+                            st.session_state[selected_key] = None
+                        else:
+                            st.session_state[selected_key] = result['result_image_path']
+                        st.rerun()
+                    
+                    # 결과 정보 요약
+                    st.caption(f"타입: {result['generation_type']}")
+                    st.caption(f"이미지: {result['input_images']}개")
+                else:
+                    st.error(f"결과 {result_idx + 1} 이미지를 찾을 수 없습니다.")
+    
+    # 선택된 결과 요약 표시
+    if st.session_state[selected_key]:
+        selected_result = next(
+            (r for r in results if r['result_image_path'] == st.session_state[selected_key]), 
+            None
+        )
+        if selected_result:
+            st.success(f"✅ 선택된 이미지: {selected_result['result_image_path']}")
+            
+            # 선택된 이미지의 프롬프트 표시
+            with st.expander("🔍 선택된 이미지의 프롬프트 보기"):
+                st.code(selected_result['prompt_used'])
+    
+    # 상세페이지 생성 버튼
+    display_detail_page_generation_button()
+
+def display_detail_page_generation_button():
+    """상세페이지 생성 버튼 표시"""
+    logger.debug("🛠️ 상세페이지 생성 버튼 표시")
+    
+    selected_key = 'selected_result_for_detail'
+    selected_image = st.session_state.get(selected_key)
+    
+    st.markdown("---")
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    
+    with col2:
+        if selected_image:
+            if st.button(
+                "📄 상세페이지 생성", 
+                use_container_width=True, 
+                type="primary",
+                key="generate_detail_page"
+            ):
+                logger.debug(f"🛠️ 상세페이지 생성 버튼 클릭: {selected_image}")
+                generate_detail_page(selected_image)
+        else:
+            st.button(
+                "📄 상세페이지 생성", 
+                use_container_width=True, 
+                disabled=True,
+                key="generate_detail_page_disabled"
+            )
+            st.caption("⚠️ 먼저 이미지를 선택해주세요")
+
+def generate_detail_page(selected_image_path: str):
+    """선택된 이미지로 상세페이지 생성"""
+    logger.debug(f"🛠️ 상세페이지 생성 시작: {selected_image_path}")
+    
+    try:
+        # 상세페이지 생성 API 호출
+        generation_data = {
+            'selected_image_path': selected_image_path,
+            'product_data': st.session_state.get('processed_data'),
+            'composition_data': st.session_state.get('composition_data')
+        }
+        
+        with st.spinner("상세페이지 생성 중... (30초~1분 소요)"):
+            response = requests.post(
+                "http://localhost:8010/api/input/generate-detail-page",
+                json=generation_data,
+                timeout=120
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('success'):
+                    logger.info("✅ 상세페이지 생성 완료")
+                    
+                    # 결과를 세션에 저장
+                    detail_result = result['data']
+                    st.session_state.detail_page_result = detail_result
+                    
+                    st.success("🎉 상세페이지 생성이 완료되었습니다!")
+                    st.info("📄 결과 페이지로 이동합니다...")
+                    
+                    # 결과 페이지로 이동
+                    time.sleep(1)
+                    st.switch_page("pages/result.py")
+                    
+                else:
+                    st.error(f"❌ 상세페이지 생성 실패: {result.get('message', '알 수 없는 오류')}")
+            else:
+                st.error(f"❌ API 요청 실패: HTTP {response.status_code}")
+                
+    except requests.exceptions.Timeout:
+        st.error("❌ 요청 시간 초과. 상세페이지 생성에는 시간이 걸릴 수 있습니다.")
+    except Exception as e:
+        logger.error(f"❌ 상세페이지 생성 중 오류: {e}")
+        st.error(f"❌ 상세페이지 생성 중 오류: {str(e)}")
+
 def main():
     """이미지 합성 페이지 메인"""
     logger.debug("🛠️ 이미지 합성 페이지 시작")
@@ -706,14 +883,6 @@ def main():
         
         st.markdown("---")
         
-        # 도움말
-        st.header("💡 도움말")
-        st.write("""
-        **폴더 구조:**
-        - `backend/data/models/` - 모델 이미지
-        - `backend/data/backgrounds/` - 배경 이미지
-        """)
-        
         # 초기화 버튼
         if st.button("🔄 선택 초기화", use_container_width=True):
             logger.debug("🛠️ 선택 초기화 버튼 클릭")
@@ -731,33 +900,16 @@ def main():
         
         result = st.session_state.composition_result
         
-        # 결과 이미지 표시
-        project_root = Path(__file__).parent.parent.parent
-        result_image_path = project_root / result['result_image_path']
+        # 결과 이미지 표시 및 선택
+        display_result_selection(result)
+
+    # 또는 composition_results (다중 결과)가 있는 경우
+    if 'composition_results' in st.session_state:
+        st.markdown("---")
+        st.header("🎨 합성 결과들")
         
-        if result_image_path.exists():
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                st.image(str(result_image_path), caption="합성 결과", width=500)
-            
-            # 결과 정보
-            st.write(f"**생성 타입:** {result['generation_type']}")
-            st.write(f"**사용된 이미지 수:** {result['input_images']}개")
-            
-            # 사용된 프롬프트 표시
-            with st.expander("🔍 사용된 프롬프트 보기"):
-                st.code(result['prompt_used'])
-            
-            # 다운로드 버튼
-            with open(result_image_path, "rb") as file:
-                st.download_button(
-                    label="📥 결과 이미지 다운로드",
-                    data=file.read(),
-                    file_name=f"composed_result_{result['generation_type']}.png",
-                    mime="image/png"
-                )
-        else:
-            st.error("결과 이미지를 찾을 수 없습니다.")
+        results = st.session_state.composition_results
+        display_multiple_results_selection(results)
 
 if __name__ == "__main__":
     main()

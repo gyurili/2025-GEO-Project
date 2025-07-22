@@ -249,27 +249,23 @@ class ImageComposer:
             return None
     
     def compose_images(self, composition_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """이미지 합성 메인 함수 (다중 상품 이미지 지원)"""
+        """
+        이미지 합성 메인 함수
+        - 모델합성: 상품 + 모델(+마스크)
+        - 배경합성: 상품 + 프롬프트(카테고리/소분류) (실제 배경이미지 없음)
+        """
         logger.debug("🛠️ 이미지 합성 프로세스 시작")
-        
         try:
-            # 입력 데이터 추출 (user_images로 변경)
             user_images_data = composition_data.get('user_images', [])
-            target_image_data = composition_data['target_image'] 
+            target_image_data = composition_data.get('target_image')
             mask_image_data = composition_data.get('mask_image')
-            generation_options = composition_data['generation_options']
-            
-            generation_type = generation_options['type']
-            custom_prompt = generation_options.get('custom_prompt', '')
-            
+            generation_options = composition_data.get('generation_options', {})
+            generation_type = generation_options.get('type', 'background')
             logger.debug(f"🛠️ 합성 타입: {generation_type}")
-            logger.debug(f"🛠️ 사용자 이미지 수: {len(user_images_data)}")
-            logger.debug(f"🛠️ 커스텀 프롬프트: {custom_prompt}")
-            
-            # 이미지 로드
+
             images = []
-            
-            # 다중 사용자 이미지들 로드
+
+            # 1. 공통: 유저 상품 이미지 로드
             for i, user_image_data in enumerate(user_images_data):
                 user_image = self._load_image_safely(user_image_data['path'], f'user_{i+1}', 'RGB')
                 if not user_image:
@@ -277,67 +273,85 @@ class ImageComposer:
                     return None
                 images.append(user_image)
                 logger.debug(f"🛠️ 사용자 이미지 {i+1} 추가됨")
-            
-            # 타겟 이미지 로드 (모델 또는 배경)
-            target_image = self._load_image_safely(target_image_data['path'], 'target', 'RGB')
-            if not target_image:
+
+            # 2. 분기: 모델 합성 vs 배경(프롬프트) 합성
+            if generation_type == 'model':
+                # (1) 모델 이미지 로드 (필수)
+                if not target_image_data or 'path' not in target_image_data:
+                    logger.error("❌ 모델 이미지 정보 없음")
+                    return None
+                model_image = self._load_image_safely(target_image_data['path'], 'model', 'RGB')
+                if not model_image:
+                    logger.error("❌ 모델 이미지 로드 실패")
+                    return None
+                images.append(model_image)
+
+                # (2) 마스크 이미지 로드 (선택)
+                if mask_image_data and 'path' in mask_image_data:
+                    mask_image = self._load_image_safely(mask_image_data['path'], 'mask', 'L')
+                    if mask_image:
+                        images.append(mask_image)
+                        logger.debug("🛠️ 마스크 이미지 추가됨")
+
+                # (3) 프롬프트(한글→영문 변환)
+                prompt = self.convert_korean_request_to_prompt(
+                    generation_options.get('custom_prompt', ''),
+                    num_images=len(images),
+                    generation_type='model',
+                    num_products=len(user_images_data)
+                )
+                if not prompt:
+                    logger.error("❌ 모델 합성 프롬프트 변환 실패")
+                    return None
+
+            elif generation_type == 'background':
+                # (1) 배경 프롬프트 기반으로 상품 이미지 참조 프롬프트 생성
+                if not (target_image_data and 'prompt' in target_image_data):
+                    logger.error("❌ 배경 프롬프트 정보 없음")
+                    return None
+                
+                base_prompt = target_image_data['prompt']
+                # 기본 프롬프트를 기반으로 상품 이미지 참조 프롬프트 생성
+                prompt = self.convert_korean_request_to_prompt(
+                    f"다음 배경에 상품을 자연스럽게 배치해주세요: {base_prompt}",
+                    num_images=len(images),
+                    generation_type='background',
+                    num_products=len(user_images_data)
+                )
+                if not prompt:
+                    logger.error("❌ 배경 합성 프롬프트 변환 실패")
+                    return None
+                # images는 오직 상품이미지만!
+
+            else:
+                logger.error(f"❌ 알 수 없는 합성 타입: {generation_type}")
                 return None
-            images.append(target_image)
-            
-            # 마스크 이미지 로드 (있는 경우)
-            if mask_image_data and mask_image_data.get('path'):
-                mask_image = self._load_image_safely(mask_image_data['path'], 'mask', 'L')
-                if mask_image:
-                    images.append(mask_image)
-                    logger.debug("🛠️ 마스크 이미지 추가됨")
-                else:
-                    logger.warning("⚠️ 마스크 이미지 로드 실패, 마스크 없이 진행")
-            
-            logger.debug(f"🛠️ 총 이미지 수: {len(images)}개 (상품: {len(user_images_data)}, 타겟: 1, 마스크: {'1' if mask_image_data and mask_image_data.get('path') else '0'})")
-            
-            # 프롬프트 변환 (다중 이미지 처리)
-            logger.debug("🛠️ 프롬프트 변환 시작")
-            english_prompt = self.convert_korean_request_to_prompt(
-                custom_prompt, len(images), generation_type, len(user_images_data)
-            )
-            
-            if not english_prompt:
-                logger.error("❌ 프롬프트 변환 실패")
-                return None
-            
-            logger.debug(f"🛠️ 변환된 프롬프트: {english_prompt}")
-            
-            # 이미지 생성
+
+            # 3. Gemini 등 이미지 생성
             logger.debug("🛠️ 이미지 생성 시작")
-            result_image = self.generate_image_with_gemini(english_prompt, images)
-            
+            result_image = self.generate_image_with_gemini(prompt, images)
             if not result_image:
                 logger.error("❌ 이미지 생성 실패")
                 return None
-            
-            # 결과 이미지 저장
+
+            # 4. 결과 저장
             project_root = Path(__file__).parent.parent.parent.parent
             result_dir = project_root / "backend" / "data" / "result"
             result_dir.mkdir(parents=True, exist_ok=True)
-            
-            result_filename = f"composed_{generation_type}_{len(user_images_data)}products_{uuid.uuid4().hex[:8]}.png"
+            result_filename = f"composed_{generation_type}_{uuid.uuid4().hex[:8]}.png"
             result_path = result_dir / result_filename
-            
             result_image.save(result_path)
             logger.info(f"✅ 결과 이미지 저장: {result_path}")
-            
-            # 상대 경로로 변환
+
             relative_path = os.path.relpath(result_path, project_root)
-            
             return {
                 'success': True,
                 'result_image_path': relative_path,
-                'prompt_used': english_prompt,
+                'prompt_used': prompt,
                 'generation_type': generation_type,
                 'input_images': len(images),
                 'product_images_count': len(user_images_data)
             }
-            
         except Exception as e:
             logger.error(f"❌ 이미지 합성 프로세스 실패: {e}")
             return None
