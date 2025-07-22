@@ -8,6 +8,7 @@ from backend.text_generator.cleaner import clean_response
 from backend.text_generator.prompt_builder import *
 from backend.text_generator.prompt_builder_hf import system_instruction, css_friendly_prompt
 from utils.logger import get_logger
+from utils.config import get_openai_api_key
 
 load_dotenv()
 logger = get_logger(__name__)
@@ -23,7 +24,7 @@ def generate_openai(product: dict) -> dict:
     Returns:
         dict: 생성된 상세페이지 HTML이 포함된 딕셔너리
     """
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = OpenAI(api_key=get_openai_api_key())
     
     prompt_parts = [
         apply_schema_prompt(product),
