@@ -220,10 +220,11 @@ def get_model_pipeline(
             )
             model_pipeline.set_ip_adapter_scale(adapter_config["scale"])
             model_pipeline.enable_vae_tiling()
+            model_pipeline.enable_attention_slicing()
             model_pipeline.enable_xformers_memory_efficient_attention()
-            logger.info("✅ IP-Adapter 자동 주입 완료")
+            logger.info("✅ IP-Adapter 주입 및 메모리 최적화 옵션 적용 완료")
         except Exception as e:
-            logger.warning(f"⚠️ IP-Adapter 자동 주입 실패: {e}")
+            logger.warning(f"⚠️ IP-Adapter 주입 및 메모리 최적화 옵션 적용 실패: {e}")
             
     return model_pipeline
 
