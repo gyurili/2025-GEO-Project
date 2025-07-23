@@ -91,7 +91,7 @@ class InputHandler:
                     'result_path': self.result_dir
                 },
                 'db_config': {
-                    'host': '34.42.160.159',
+                    'host': '34.29.11.234',
                     'user': 'GEOGEO',
                     'password': 'GEOGEO1234!',
                     'db': 'geo_db'

@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore")
 import os
 import torch
 from dotenv import load_dotenv
@@ -29,7 +31,7 @@ MODEL_LOADERS = {
 def download_model(
         model_id: str, 
         model_type: str = "diffusion_text2img",
-        save_dir: str = "./backend/models",
+        save_dir: str = "./models",
         use_4bit: bool = False
     ):
     """
@@ -153,7 +155,7 @@ def get_model_pipeline(
         ip_adapter_config: dict = None,
         lora_path: str = None,
         use_4bit: bool = False,
-        save_dir: str = "./backend/models"
+        save_dir: str = "./models"
     ):
     """
     Hugging Face 모델을 다운로드 및 로드하여 파이프라인 객체를 반환합니다.
@@ -213,6 +215,8 @@ def get_model_pipeline(
                 "weight_name": "ip-adapter_sdxl.bin",
                 "scale": 0.7,
             }
+
+            logger.info(f"🛠️ IP-Adapter 로딩: {adapter_config['repo_id']}")
             model_pipeline.load_ip_adapter(
                 adapter_config["repo_id"],
                 subfolder=adapter_config["subfolder"],
@@ -220,7 +224,6 @@ def get_model_pipeline(
             )
             model_pipeline.set_ip_adapter_scale(adapter_config["scale"])
             model_pipeline.enable_vae_tiling()
-            model_pipeline.enable_attention_slicing()
             model_pipeline.enable_xformers_memory_efficient_attention()
             logger.info("✅ IP-Adapter 주입 및 메모리 최적화 옵션 적용 완료")
         except Exception as e:

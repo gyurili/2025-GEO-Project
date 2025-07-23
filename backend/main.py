@@ -28,6 +28,13 @@ async def lifespan(app: FastAPI):
     
     # 시작 시 초기화
     logger.debug("🛠️ FastAPI 애플리케이션 시작 프로세스 시작")
+    logger.debug(f"🛠️ 현재 작업 디렉토리: {os.getcwd()}")
+    logger.debug(f"🛠️ main.py 파일 위치: {__file__}")
+    
+    # 프로젝트 루트로 작업 디렉토리 변경
+    project_root = Path(__file__).parent.parent
+    os.chdir(project_root)
+    logger.debug(f"🛠️ 작업 디렉토리를 프로젝트 루트로 변경: {os.getcwd()}")
     logger.info("✅ FastAPI 애플리케이션 시작")
     
     try:

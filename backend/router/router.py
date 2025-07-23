@@ -448,31 +448,76 @@ async def receive_product_info(
     상품 dict 입력 → 차별점 도출 + 후보 이미지(최대 2개) 생성 → 상태 dict(딕셔너리)에 누적
     """
     logger.debug("🛠️ receive_product_info 진입")
+    logger.debug(f"🛠️ 입력 product 타입: {type(product)}")
+    logger.debug(f"🛠️ 입력 product 키: {list(product.keys()) if isinstance(product, dict) else 'NOT_DICT'}")
+    
     try:
+        # 병렬 작업 실행
+        logger.debug("🛠️ 차별점 분석 및 이미지 생성 병렬 작업 시작")
         competitor_task = competitor_main(product)
         img_gen_task = asyncio.to_thread(
             img_gen_pipeline.generate_image, product
         )
-        diff_result, candidate_images_result = await asyncio.gather(
-            competitor_task, img_gen_task
-        )
+        
+        # gather 결과 수신
+        results = await asyncio.gather(competitor_task, img_gen_task)
+        diff_result = results[0]  # competitor_main 결과
+        candidate_images_result = results[1]  # img_gen_pipeline.generate_image 결과
+        
+        logger.debug(f"🛠️ diff_result 타입: {type(diff_result)}")
+        logger.debug(f"🛠️ diff_result 내용: {diff_result}")
+        logger.debug(f"🛠️ candidate_images_result 타입: {type(candidate_images_result)}")
+        logger.debug(f"🛠️ candidate_images_result 내용: {candidate_images_result}")
 
-        # 차별점 product dict에 추가
-        product['differences'] = diff_result.get('differences', []) if isinstance(diff_result, dict) else diff_result
-
-        # 후보 이미지(리스트, 내부도 리스트!) 추가
-        if candidate_images_result:
-            image_paths = [res["image_path"] for res in candidate_images_result if "image_path" in res]
-            product['candidate_images'] = [image_paths] if image_paths else [[]]
+        # 차별점 product dict에 추가 (안전한 처리)
+        if isinstance(diff_result, dict) and 'differences' in diff_result:
+            product['differences'] = diff_result['differences']
+            logger.debug(f"🛠️ 차별점 추가 완료: {len(product['differences'])}개")
+        elif isinstance(diff_result, dict):
+            logger.warning(f"⚠️ diff_result가 딕셔너리이지만 'differences' 키가 없음: {diff_result}")
+            product['differences'] = []
         else:
+            logger.warning(f"⚠️ diff_result가 예상과 다른 형태: {type(diff_result)} - {diff_result}")
+            product['differences'] = []
+
+        # 후보 이미지 처리 (안전한 처리)
+        try:
+            if candidate_images_result and isinstance(candidate_images_result, dict):
+                # generate_image() 반환값: {"image_paths": [path1, path2, ...]}
+                image_paths = candidate_images_result.get("image_paths", [])
+                if image_paths:
+                    product['candidate_images'] = [image_paths]  # 리스트 안에 리스트 형태
+                    logger.debug(f"🛠️ 후보 이미지 처리 완료: {len(image_paths)}개 이미지")
+                    logger.debug(f"🛠️ 이미지 경로들: {image_paths}")
+                else:
+                    product['candidate_images'] = [[]]
+                    logger.warning("⚠️ image_paths가 비어있음")
+            elif candidate_images_result and isinstance(candidate_images_result, list):
+                # 혹시 리스트 형태로 반환되는 경우 대비
+                product['candidate_images'] = [candidate_images_result]
+                logger.debug(f"🛠️ 후보 이미지 처리 완료 (리스트): {len(candidate_images_result)}개 이미지")
+            else:
+                logger.warning(f"⚠️ candidate_images_result가 예상과 다른 형태: {type(candidate_images_result)} - {candidate_images_result}")
+                product['candidate_images'] = [[]]
+        except Exception as img_error:
+            logger.error(f"❌ 후보 이미지 처리 중 오류: {img_error}")
+            import traceback
+            logger.error(f"❌ 스택 트레이스: {traceback.format_exc()}")
             product['candidate_images'] = [[]]
 
-        # 선택 이미지도 빈 리스트로 추가(아직 미선택)
-        product['selected_image_path'] = []
         logger.info("✅ 상품입력/차별점/이미지 생성 병렬 처리 완료")
-        return product
+        logger.debug(f"🛠️ 최종 product 키: {list(product.keys())}")
+        
+        return {
+            "success": True,
+            "data": product
+        }
+        
     except Exception as e:
         logger.error(f"❌ receive_product_info 예외: {e}")
+        logger.error(f"❌ 예외 타입: {type(e)}")
+        import traceback
+        logger.error(f"❌ 스택 트레이스: {traceback.format_exc()}")
         return {"success": False, "error": str(e)}
 
 # ---- 3. output 라우터: 상세페이지 생성 ----
@@ -481,7 +526,7 @@ async def receive_product_info(
     summary="상세페이지 생성",
     description="선택된 이미지 및 분석 데이터를 기반으로 텍스트 생성과 HTML 상세페이지를 생성하며, session_id를 반환합니다."
 )
-async def generate_detail_page(
+def generate_detail_page(
     product: Dict[str, Any] = Body(...)
 ) -> Dict[str, Any]:
     """
@@ -489,11 +534,21 @@ async def generate_detail_page(
     """
     logger.debug("🛠️ generate_detail_page 진입")
     try:
-        session_id = text_generator_main(product)
-        product["session_id"] = session_id
-        page_generator_main(product)
+        # text_generator_main은 product 딕셔너리 전체를 반환하고, session_id가 추가됨
+        updated_product = text_generator_main(product)
+        session_id = updated_product.get("session_id")
+        
+        if not session_id:
+            logger.error("❌ session_id가 생성되지 않았습니다")
+            return {"success": False, "error": "session_id 생성 실패"}
+        
+        logger.debug(f"🛠️ 생성된 session_id: {session_id}")
+        
+        # page_generator_main에 업데이트된 product 전달
+        page_generator_main(updated_product)
+        
         logger.info(f"✅ 상세페이지 생성 완료 (session_id={session_id})")
-        return product
+        return {"success": True, "data": updated_product}
     except Exception as e:
         logger.error(f"❌ generate_detail_page 예외: {e}")
         return {"success": False, "error": str(e)}

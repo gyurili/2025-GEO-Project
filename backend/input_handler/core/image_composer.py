@@ -99,13 +99,13 @@ class ImageComposer:
     
     def convert_korean_request_to_prompt(self, korean_request: str, num_images: int, generation_type: str, num_products: int = 1) -> Optional[str]:
         """한글 요청사항을 영문 이미지 생성 프롬프트로 변환 (다중 상품 이미지 지원)"""
-        logger.debug(f"🛠️ 프롬프트 변환 시작: {generation_type} 타입, {num_products}개 상품")
+        logger.debug(f"🛠️ 프롬프트 변환: {generation_type}, {num_products}개 상품, {num_images}개 이미지")
         
         if not self.openai_client:
             logger.error("❌ OpenAI 클라이언트가 초기화되지 않음")
             return None
         
-        # 이미지 참조 번호 생성 (다중 상품 지원)
+        # ✅ 이미지 참조 번호 생성 (실제 전달되는 이미지 순서와 일치)
         if num_products > 1:
             product_refs = ", ".join([f"(#{i+1})" for i in range(num_products)])
             target_ref = f"(#{num_products + 1})"
@@ -114,6 +114,8 @@ class ImageComposer:
             product_refs = "(#1)"
             target_ref = "(#2)"
             mask_ref = "(#3)" if num_images > 2 else ""
+        
+        logger.debug(f"🛠️ 참조 번호 - 상품: {product_refs}, 타겟: {target_ref}, 마스크: {mask_ref}")
         
         if generation_type == "model":
             system_prompt = f"""
@@ -176,6 +178,87 @@ class ImageComposer:
         except Exception as e:
             logger.error(f"❌ OpenAI API 호출 실패: {e}")
             return None
+    
+    def analyze_combination_intent(self, korean_request: str, num_products: int) -> Dict[str, Any]:
+        """사용자 요청사항을 분석하여 상품 조합 의도 파악"""
+        logger.debug(f"🛠️ 조합 의도 분석 시작: {num_products}개 상품")
+        
+        if num_products <= 1:
+            return {
+                'combine_products': False,
+                'description': '단일 상품'
+            }
+        
+        if not korean_request or korean_request.strip() == "":
+            return {
+                'combine_products': False,
+                'description': '요청사항 없음 - 개별 착용'
+            }
+        
+        if not self.openai_client:
+            logger.error("❌ OpenAI 클라이언트가 초기화되지 않음")
+            return {
+                'combine_products': False,
+                'description': '기본값 - 개별 착용'
+            }
+        
+        system_prompt = f"""
+당신은 패션 의상 조합 요청을 분석하는 전문가입니다.
+사용자가 {num_products}개의 상품에 대해 요청한 내용을 분석해주세요.
+
+판단 기준:
+1. "combine_products": true - 여러 상품을 동시에 착용하라는 의도가 명확한 경우
+   예시: 
+   - "바지와 티셔츠를 입고 있는"
+   - "상의와 하의를 함께"
+   - "세트로 착용한"
+   - "모든 옷을 입은"
+   - 복수의 의류 아이템을 동시에 언급
+
+2. "combine_products": false - 개별 착용을 원하거나 명확하지 않은 경우
+   예시:
+   - "바지를 입은 모델" (단일 아이템만 언급)
+   - "자연스럽게" (구체적 언급 없음)
+   - 빈 문자열 또는 일반적인 요청
+
+응답은 반드시 다음 JSON 형식으로만 해주세요:
+{{
+    "combine_products": true 또는 false,
+    "reasoning": "판단 근거"
+}}
+"""
+    
+        try:
+            logger.debug("🛠️ OpenAI API 호출로 조합 의도 분석")
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": korean_request}
+                ],
+                max_tokens=150,
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+            
+            import json
+            result = json.loads(response.choices[0].message.content)
+            combine_products = result.get('combine_products', False)
+            reasoning = result.get('reasoning', '')
+            
+            logger.info(f"✅ 조합 의도 분석: {'동시 착용' if combine_products else '개별 착용'} - {reasoning}")
+            
+            return {
+                'combine_products': combine_products,
+                'description': f"{'동시 착용' if combine_products else '개별 착용'} - {reasoning}"
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ 조합 의도 분석 실패: {e}")
+            return {
+                'combine_products': False,
+                'description': '분석 실패 - 개별 착용 (기본값)'
+            }
     
     def generate_image_with_gemini(self, prompt: str, images: List[Image.Image]) -> Optional[Image.Image]:
         """Gemini API를 사용하여 이미지 생성"""
@@ -251,8 +334,8 @@ class ImageComposer:
     def compose_images(self, composition_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         이미지 합성 메인 함수
-        - 모델합성: 상품 + 모델(+마스크)
-        - 배경합성: 상품 + 프롬프트(카테고리/소분류) (실제 배경이미지 없음)
+        - 항상 선택한 상품 수만큼 결과물 생성
+        - 요청사항에 따라 각 결과물의 조합 방식 결정
         """
         logger.debug("🛠️ 이미지 합성 프로세스 시작")
         try:
@@ -261,97 +344,235 @@ class ImageComposer:
             mask_image_data = composition_data.get('mask_image')
             generation_options = composition_data.get('generation_options', {})
             generation_type = generation_options.get('type', 'background')
-            logger.debug(f"🛠️ 합성 타입: {generation_type}")
+            
+            num_products = len(user_images_data)
+            logger.debug(f"🛠️ 합성 타입: {generation_type}, 상품 수: {num_products}")
 
-            images = []
-
-            # 1. 공통: 유저 상품 이미지 로드
-            for i, user_image_data in enumerate(user_images_data):
-                user_image = self._load_image_safely(user_image_data['path'], f'user_{i+1}', 'RGB')
-                if not user_image:
-                    logger.error(f"❌ 사용자 이미지 {i+1} 로드 실패")
-                    return None
-                images.append(user_image)
-                logger.debug(f"🛠️ 사용자 이미지 {i+1} 추가됨")
-
-            # 2. 분기: 모델 합성 vs 배경(프롬프트) 합성
-            if generation_type == 'model':
-                # (1) 모델 이미지 로드 (필수)
-                if not target_image_data or 'path' not in target_image_data:
-                    logger.error("❌ 모델 이미지 정보 없음")
-                    return None
-                model_image = self._load_image_safely(target_image_data['path'], 'model', 'RGB')
-                if not model_image:
-                    logger.error("❌ 모델 이미지 로드 실패")
-                    return None
-                images.append(model_image)
-
-                # (2) 마스크 이미지 로드 (선택)
-                if mask_image_data and 'path' in mask_image_data:
-                    mask_image = self._load_image_safely(mask_image_data['path'], 'mask', 'L')
-                    if mask_image:
-                        images.append(mask_image)
-                        logger.debug("🛠️ 마스크 이미지 추가됨")
-
-                # (3) 프롬프트(한글→영문 변환)
-                prompt = self.convert_korean_request_to_prompt(
-                    generation_options.get('custom_prompt', ''),
-                    num_images=len(images),
-                    generation_type='model',
-                    num_products=len(user_images_data)
-                )
-                if not prompt:
-                    logger.error("❌ 모델 합성 프롬프트 변환 실패")
-                    return None
-
-            elif generation_type == 'background':
-                # (1) 배경 프롬프트 기반으로 상품 이미지 참조 프롬프트 생성
-                if not (target_image_data and 'prompt' in target_image_data):
-                    logger.error("❌ 배경 프롬프트 정보 없음")
-                    return None
-                
-                base_prompt = target_image_data['prompt']
-                # 기본 프롬프트를 기반으로 상품 이미지 참조 프롬프트 생성
-                prompt = self.convert_korean_request_to_prompt(
-                    f"다음 배경에 상품을 자연스럽게 배치해주세요: {base_prompt}",
-                    num_images=len(images),
-                    generation_type='background',
-                    num_products=len(user_images_data)
-                )
-                if not prompt:
-                    logger.error("❌ 배경 합성 프롬프트 변환 실패")
-                    return None
-                # images는 오직 상품이미지만!
-
-            else:
-                logger.error(f"❌ 알 수 없는 합성 타입: {generation_type}")
-                return None
-
-            # 3. Gemini 등 이미지 생성
-            logger.debug("🛠️ 이미지 생성 시작")
-            result_image = self.generate_image_with_gemini(prompt, images)
-            if not result_image:
-                logger.error("❌ 이미지 생성 실패")
-                return None
-
-            # 4. 결과 저장
+            # 조합 의도 분석
+            combination_info = self.analyze_combination_intent(
+                generation_options.get('custom_prompt', ''), 
+                num_products
+            )
+            
+            logger.info(f"🎯 조합 전략: {combination_info['description']}")
+            
+            # 항상 상품 수만큼 결과 생성
+            results = []
             project_root = Path(__file__).parent.parent.parent.parent
-            result_dir = project_root / "backend" / "data" / "result"
+            result_dir = project_root / "backend" / "data" / "output"
             result_dir.mkdir(parents=True, exist_ok=True)
-            result_filename = f"composed_{generation_type}_{uuid.uuid4().hex[:8]}.png"
-            result_path = result_dir / result_filename
-            result_image.save(result_path)
-            logger.info(f"✅ 결과 이미지 저장: {result_path}")
-
-            relative_path = os.path.relpath(result_path, project_root)
+            
+            for i in range(num_products):
+                logger.debug(f"🛠️ 결과물 {i+1}/{num_products} 생성 시작")
+                
+                if combination_info['combine_products']:
+                    # 모든 상품을 함께 착용한 이미지 생성
+                    result = self._generate_combined_image_for_result(
+                        user_images_data, target_image_data, mask_image_data,
+                        generation_options, generation_type, i + 1
+                    )
+                else:
+                    # 개별 상품만 착용한 이미지 생성
+                    result = self._generate_individual_image_for_result(
+                        user_images_data[i], target_image_data, mask_image_data,
+                        generation_options, generation_type, i + 1
+                    )
+                
+                if result:
+                    results.append(result)
+                    logger.info(f"✅ 결과물 {i+1} 생성 완료")
+                else:
+                    logger.error(f"❌ 결과물 {i+1} 생성 실패")
+            
+            if not results:
+                logger.error("❌ 모든 결과물 생성 실패")
+                return None
+            
             return {
                 'success': True,
-                'result_image_path': relative_path,
-                'prompt_used': prompt,
+                'results': results,
                 'generation_type': generation_type,
-                'input_images': len(images),
-                'product_images_count': len(user_images_data)
+                'total_images': len(results),
+                'product_images_count': num_products,
+                'combination_strategy': combination_info['description']
             }
+                
         except Exception as e:
             logger.error(f"❌ 이미지 합성 프로세스 실패: {e}")
             return None
+
+    def _generate_combined_image_for_result(self, user_images_data, target_image_data, mask_image_data, 
+                                      generation_options, generation_type, result_index) -> Optional[Dict[str, Any]]:
+        """모든 상품을 함께 착용한 이미지 생성 (단일 결과물용)"""
+        logger.debug(f"🛠️ 통합 착용 이미지 생성: 결과물 {result_index}")
+        
+        images = []
+        
+        # ✅ 모든 상품 이미지를 순서대로 로드
+        logger.debug(f"🛠️ 모든 상품 이미지 로드 시작: {len(user_images_data)}개")
+        for i, user_image_data in enumerate(user_images_data):
+            user_image = self._load_image_safely(user_image_data['path'], f'상품_{i+1}', 'RGB')
+            if not user_image:
+                logger.error(f"❌ 상품 이미지 {i+1} 로드 실패: {user_image_data['path']}")
+                return None
+            images.append(user_image)
+            logger.debug(f"✅ 상품 이미지 {i+1} 추가: {user_image.size}")
+        
+        # 타겟 이미지 처리
+        if generation_type == 'model':
+            if not target_image_data or 'path' not in target_image_data:
+                logger.error("❌ 모델 이미지 정보 없음")
+                return None
+            model_image = self._load_image_safely(target_image_data['path'], 'model', 'RGB')
+            if not model_image:
+                return None
+            images.append(model_image)
+            logger.debug(f"✅ 모델 이미지 추가: {model_image.size}")
+            
+            # 마스크 이미지 (선택)
+            if mask_image_data and 'path' in mask_image_data:
+                mask_image = self._load_image_safely(mask_image_data['path'], 'mask', 'L')
+                if mask_image:
+                    images.append(mask_image)
+                    logger.debug(f"✅ 마스크 이미지 추가: {mask_image.size}")
+        
+        # ✅ 실제 이미지 순서에 맞는 프롬프트 생성
+        total_images = len(images)
+        logger.debug(f"🛠️ 총 전달할 이미지 수: {total_images}")
+        logger.debug(f"🛠️ 이미지 구성: 상품 {len(user_images_data)}개 + 모델/배경 1개" + 
+                    (f" + 마스크 1개" if generation_type == 'model' and mask_image_data else ""))
+        
+        # 통합 착용용 프롬프트 생성
+        if generation_type == 'model':
+            prompt = self.convert_korean_request_to_prompt(
+                generation_options.get('custom_prompt', ''),
+                num_images=total_images,
+                generation_type='model',
+                num_products=len(user_images_data)
+            )
+        else:  # background
+            base_prompt = target_image_data.get('prompt', '')
+            prompt = self.convert_korean_request_to_prompt(
+                f"다음 배경에 모든 상품을 자연스럽게 배치해주세요: {base_prompt}",
+                num_images=total_images,
+                generation_type='background',
+                num_products=len(user_images_data)
+            )
+        
+        if not prompt:
+            logger.error("❌ 프롬프트 변환 실패")
+            return None
+        
+        logger.debug(f"🛠️ 생성된 프롬프트: {prompt}")
+        
+        # ✅ 이미지 생성 (모든 상품 이미지 + 모델/배경 이미지 전달)
+        result_image = self.generate_image_with_gemini(prompt, images)
+        if not result_image:
+            logger.error("❌ Gemini 이미지 생성 실패")
+            return None
+        
+        # 결과 저장
+        project_root = Path(__file__).parent.parent.parent.parent
+        result_dir = project_root / "backend" / "data" / "output"
+        result_filename = f"composed_{generation_type}_combined_{result_index}_{uuid.uuid4().hex[:8]}.png"
+        result_path = result_dir / result_filename
+        result_image.save(result_path)
+        
+        relative_path = os.path.relpath(result_path, project_root)
+        logger.info(f"✅ 통합 착용 이미지 저장: {relative_path}")
+        
+        return {
+            'result_image_path': relative_path,
+            'prompt_used': prompt,
+            'result_index': result_index,
+            'combination_type': '모든 상품 동시 착용',
+            'images_used': f"상품 {len(user_images_data)}개 + 모델/배경 1개"
+        }
+
+    def _generate_individual_image_for_result(self, user_image_data, target_image_data, mask_image_data,
+                                        generation_options, generation_type, result_index) -> Optional[Dict[str, Any]]:
+        """개별 상품만 착용한 이미지 생성 (단일 결과물용)"""
+        logger.debug(f"🛠️ 개별 착용 이미지 생성: 결과물 {result_index}")
+        
+        images = []
+        
+        # ✅ 현재 상품 이미지만 로드
+        logger.debug(f"🛠️ 상품 {result_index} 이미지 로드: {user_image_data['path']}")
+        user_image = self._load_image_safely(user_image_data['path'], f'상품_{result_index}', 'RGB')
+        if not user_image:
+            logger.error(f"❌ 상품 {result_index} 이미지 로드 실패: {user_image_data['path']}")
+            return None
+        images.append(user_image)
+        logger.debug(f"✅ 상품 {result_index} 이미지 추가: {user_image.size}")
+        
+        # 타겟 이미지 처리
+        if generation_type == 'model':
+            if not target_image_data or 'path' not in target_image_data:
+                logger.error("❌ 모델 이미지 정보 없음")
+                return None
+            model_image = self._load_image_safely(target_image_data['path'], 'model', 'RGB')
+            if not model_image:
+                return None
+            images.append(model_image)
+            logger.debug(f"✅ 모델 이미지 추가: {model_image.size}")
+            
+            # 마스크 이미지 (선택)
+            if mask_image_data and 'path' in mask_image_data:
+                mask_image = self._load_image_safely(mask_image_data['path'], 'mask', 'L')
+                if mask_image:
+                    images.append(mask_image)
+                    logger.debug(f"✅ 마스크 이미지 추가: {mask_image.size}")
+        
+        # ✅ 실제 이미지 순서에 맞는 프롬프트 생성
+        total_images = len(images)
+        logger.debug(f"🛠️ 총 전달할 이미지 수: {total_images}")
+        logger.debug(f"🛠️ 이미지 구성: 상품 1개 + 모델/배경 1개" + 
+                    (f" + 마스크 1개" if generation_type == 'model' and mask_image_data else ""))
+        
+        # 개별 착용용 프롬프트 생성
+        if generation_type == 'model':
+            prompt = self.convert_korean_request_to_prompt(
+                generation_options.get('custom_prompt', ''),
+                num_images=total_images,
+                generation_type='model',
+                num_products=1  # ✅ 개별 생성이므로 1개
+            )
+        else:  # background
+            base_prompt = target_image_data.get('prompt', '')
+            prompt = self.convert_korean_request_to_prompt(
+                f"다음 배경에 상품을 자연스럽게 배치해주세요: {base_prompt}",
+                num_images=total_images,
+                generation_type='background',
+                num_products=1
+            )
+        
+        if not prompt:
+            logger.error(f"❌ 상품 {result_index} 프롬프트 변환 실패")
+            return None
+        
+        logger.debug(f"🛠️ 생성된 프롬프트: {prompt}")
+        
+        # ✅ 이미지 생성 (단일 상품 이미지 + 모델/배경 이미지 전달)
+        result_image = self.generate_image_with_gemini(prompt, images)
+        if not result_image:
+            logger.error(f"❌ 상품 {result_index} Gemini 이미지 생성 실패")
+            return None
+        
+        # 결과 저장
+        project_root = Path(__file__).parent.parent.parent.parent
+        result_dir = project_root / "backend" / "data" / "output"
+        result_filename = f"composed_{generation_type}_individual_{result_index}_{uuid.uuid4().hex[:8]}.png"
+        result_path = result_dir / result_filename
+        result_image.save(result_path)
+        
+        relative_path = os.path.relpath(result_path, project_root)
+        logger.info(f"✅ 개별 착용 이미지 저장: {relative_path}")
+        
+        return {
+            'result_image_path': relative_path,
+            'prompt_used': prompt,
+            'result_index': result_index,
+            'combination_type': f'상품 {result_index} 개별 착용',
+            'product_name': user_image_data.get('relative_path', f'상품_{result_index}'),
+            'images_used': f"상품 1개 + 모델/배경 1개"
+        }
