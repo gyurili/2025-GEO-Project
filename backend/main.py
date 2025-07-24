@@ -10,8 +10,10 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 from utils.logger import get_logger
 
-from router.input_router import router as input_router
-from input_handler.core.input_main import InputHandler
+from router.router import input_router
+from router.router import process_router
+from router.router import output_router
+from backend.input_handler.core.input_main import InputHandler
 
 # 로거 설정
 logger = get_logger(__name__)
@@ -26,6 +28,13 @@ async def lifespan(app: FastAPI):
     
     # 시작 시 초기화
     logger.debug("🛠️ FastAPI 애플리케이션 시작 프로세스 시작")
+    logger.debug(f"🛠️ 현재 작업 디렉토리: {os.getcwd()}")
+    logger.debug(f"🛠️ main.py 파일 위치: {__file__}")
+    
+    # 프로젝트 루트로 작업 디렉토리 변경
+    project_root = Path(__file__).parent.parent
+    os.chdir(project_root)
+    logger.debug(f"🛠️ 작업 디렉토리를 프로젝트 루트로 변경: {os.getcwd()}")
     logger.info("✅ FastAPI 애플리케이션 시작")
     
     try:
@@ -73,7 +82,9 @@ logger.debug("🛠️ CORS 미들웨어 설정 완료 (모든 origin 허용)")
 # 라우터 등록
 logger.debug("🛠️ API 라우터 등록 시작")
 app.include_router(input_router)
-logger.debug("🛠️ input_router 등록 완료")
+app.include_router(process_router)
+app.include_router(output_router)
+logger.debug("🛠️ 라우터 등록 완료")
 
 logger.info("✅ FastAPI 애플리케이션 설정 완료")
 
