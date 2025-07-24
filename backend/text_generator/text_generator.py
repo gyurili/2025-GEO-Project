@@ -54,7 +54,19 @@ def generate_openai(product: dict) -> dict:
     if image_paths:
         image_prompt_lines = ["상세페이지 내에 다음 상품 이미지를 모두 포함시켜주세요:"]
         for path in image_paths:
-            image_prompt_lines.append(f'- <img class="product-image" src="{path}" alt="...">')
+            # HTML에서 사용할 수 있는 상대 경로로 변환
+            # backend/data/result/에서 backend/data/output/로 접근: ../output/
+            if path.startswith("backend/data/output/"):
+                # backend/data/output/xxx.png -> ../output/xxx.png
+                relative_path = path.replace("backend/data/output/", "../output/")
+            elif path.startswith("backend/data/input/"):
+                # backend/data/input/xxx.jpg -> ../input/xxx.jpg  
+                relative_path = path.replace("backend/data/input/", "../input/")
+            else:
+                # 다른 경로는 그대로 사용
+                relative_path = path
+            
+            image_prompt_lines.append(f'- <img class="product-image" src="{relative_path}" alt="...">')
         image_prompt_lines.append("각 이미지의 alt 속성은 제품명과 특징을 바탕으로 자동 생성해주세요")
         image_prompt_lines.append("각 이미지는 적절한 섹션에 분산하여 배치해주세요.")
 
@@ -146,7 +158,19 @@ def generate_hf(product: dict) -> dict:
     if image_paths:
         image_prompt_lines = ["상세페이지 내에 다음 상품 이미지를 모두 포함시켜주세요:"]
         for path in image_paths:
-            image_prompt_lines.append(f'- <img class="product-image" src="{path}" alt="...">')
+            # HTML에서 사용할 수 있는 상대 경로로 변환
+            # backend/data/result/에서 backend/data/output/로 접근: ../output/
+            if path.startswith("backend/data/output/"):
+                # backend/data/output/xxx.png -> ../output/xxx.png
+                relative_path = path.replace("backend/data/output/", "../output/")
+            elif path.startswith("backend/data/input/"):
+                # backend/data/input/xxx.jpg -> ../input/xxx.jpg  
+                relative_path = path.replace("backend/data/input/", "../input/")
+            else:
+                # 다른 경로는 그대로 사용
+                relative_path = path
+            
+            image_prompt_lines.append(f'- <img class="product-image" src="{relative_path}" alt="...">')
         image_prompt_lines.append("각 이미지의 alt 속성은 제품명과 특징을 바탕으로 자동 생성해주세요")
         image_prompt_lines.append("각 이미지는 적절한 섹션에 분산하여 배치해주세요.")
 

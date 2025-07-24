@@ -90,6 +90,12 @@ class InputHandler:
                     'output_path': self.output_dir,
                     'result_path': self.result_dir
                 },
+                'db_config': {
+                    'host': '34.29.11.234',
+                    'user': 'GEOGEO',
+                    'password': 'GEOGEO1234!',
+                    'db': 'geo_db'
+                },
                 'input': product_data
             }
             
@@ -156,10 +162,10 @@ class InputHandler:
             
             # 이미지가 있는 경우에만 임시 값 설정
             if uploaded_files and len(uploaded_files) > 0:
-                temp_data['image_path'] = ['temp']  # 임시 값 (검증 통과용)
-                logger.debug("🛠️ 이미지 파일 존재 - 임시 image_path 설정")
+                temp_data['image_path_list'] = ['temp']  # 임시 값 (검증 통과용)
+                logger.debug("🛠️ 이미지 파일 존재 - 임시 image_path_list 설정")
             else:
-                logger.debug("🛠️ 이미지 파일 없음 - image_path 설정하지 않음")
+                logger.debug("🛠️ 이미지 파일 없음 - image_path_list 설정하지 않음")
             
             parsed_data = self.form_parser.parse_form_data(temp_data)
             logger.debug("🛠️ 폼 데이터 파싱 완료")
@@ -171,18 +177,18 @@ class InputHandler:
                 image_paths = self.process_multiple_images(uploaded_files)
                 
                 if image_paths:
-                    parsed_data['image_path'] = image_paths
+                    parsed_data['image_path_list'] = image_paths
                     logger.debug(f"🛠️ 이미지 경로 설정 완료: {len(image_paths)}개")
                 else:
                     logger.warning("⚠️ 일부 또는 모든 이미지 처리 실패")
                     # 이미지 처리 실패해도 계속 진행 (이미지는 선택사항)
-                    if 'image_path' in parsed_data:
-                        del parsed_data['image_path']
+                    if 'image_path_list' in parsed_data:
+                        del parsed_data['image_path_list']
             else:
                 logger.debug("🛠️ 업로드된 이미지 없음 - 이미지 처리 건너뜀")
-                # 임시로 설정된 image_path 제거
-                if 'image_path' in parsed_data:
-                    del parsed_data['image_path']
+                # 임시로 설정된 image_path_list 제거
+                if 'image_path_list' in parsed_data:
+                    del parsed_data['image_path_list']
             
             # 3. config.yaml 생성
             logger.debug("🛠️ 3단계: config.yaml 생성 시작")
@@ -308,8 +314,8 @@ class InputHandler:
                     logger.debug("🛠️ 모든 필수 필드 확인됨")
                 
                 # 이미지 필드 확인 (선택사항)
-                if 'image_path' in product_input:
-                    image_count = len(product_input['image_path']) if isinstance(product_input['image_path'], list) else 1
+                if 'image_path_list' in product_input:
+                    image_count = len(product_input['image_path_list']) if isinstance(product_input['image_path_list'], list) else 1
                     logger.debug(f"🛠️ 이미지 파일: {image_count}개")
                 else:
                     logger.debug("🛠️ 이미지 파일 없음")

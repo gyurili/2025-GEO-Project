@@ -45,7 +45,7 @@ class ProductInputSchema(BaseModel):
         description="CSS 타입 (필수, 1 또는 2)"
     )
     
-    image_path: Optional[List[str]] = Field(
+    image_path_list: Optional[List[str]] = Field(
         default=None,
         description="이미지 경로 리스트 (선택사항)"
     )
@@ -96,9 +96,9 @@ class ProductInputSchema(BaseModel):
         
         return v
     
-    @validator('image_path')
-    def validate_image_path(cls, v):
-        """이미지 경로 검증 (선택사항)"""
+    @validator('image_path_list')
+    def validate_image_path_list(cls, v):
+        """이미지 경로 리스트 검증 (선택사항)"""
         if v is None:
             return None
         

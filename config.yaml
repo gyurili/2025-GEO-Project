@@ -1,17 +1,21 @@
+settings:
+  verbose: false
+  project_root: /home/ubuntu/2025-GEO-Project
 data:
-  output_path: backend/data/output
-  result_path: backend/data/result
-
+  output_path: /home/ubuntu/2025-GEO-Project/backend/data/output
+  result_path: /home/ubuntu/2025-GEO-Project/backend/data/result
 db_config:
-  "host": "34.9.132.147"
-  "user": "GEOGEO"
-  "password": "GEOGEO1234!"
-  "db": "geo_db"
-
+  host: 34.29.11.234
+  user: GEOGEO
+  password: GEOGEO1234!
+  db: geo_db
 input:
-  name: "롤프 남성 정장자켓 수트마이 양복상하의"
-  category: "양복"
+  name: 롤프 남성 정장자켓 수트마이 양복상의
+  category: 양복
   price: 58000
-  brand: "롤프"
-  features: "꼼꼼한 박음질, 고급스러운 원단, 클래식한 디자인"
-  image_path_list: ["backend/data/output/suit.png", "backend/data/output/suit2.png"]
+  brand: 롤프
+  features: 꼼꼼한 박음질, 고급스러운 원단, 클래식한 디자인
+  css_type: 1
+  image_path_list:
+  - backend/data/input/product_d6525acf70174c238ca27dee61d4ea51_0.jpg
+  - backend/data/input/product_dafbbf6a90f54696abe7b679c124d462_1.jpg

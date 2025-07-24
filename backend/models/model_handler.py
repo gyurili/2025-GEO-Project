@@ -35,7 +35,7 @@ MODEL_LOADERS = {
 def download_model(
         model_id: str, 
         model_type: str = "diffusion_text2img",
-        save_dir: str = "./backend/models",
+        save_dir: str = "./models",
         use_4bit: bool = False
     ):
     """
@@ -159,7 +159,7 @@ def get_model_pipeline(
         ip_adapter_config: dict = None,
         lora_path: str = None,
         use_4bit: bool = False,
-        save_dir: str = "./backend/models"
+        save_dir: str = "./models"
     ):
     """
     Hugging Face 모델을 다운로드 및 로드하여 파이프라인 객체를 반환합니다.

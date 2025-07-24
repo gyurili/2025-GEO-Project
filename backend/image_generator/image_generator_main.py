@@ -132,8 +132,6 @@ class ImgGenPipeline:
 
                 # 메모리 해제
                 del single_result
-                del loaded_image
-                del processed_image
                 gc.collect()
                 torch.cuda.empty_cache()
             else:
@@ -208,10 +206,20 @@ class ImgGenPipeline:
             # 4. 이미지 생성
             if not self.diffusion_pipeline:
                 logger.error("❌ Diffusion Pipeline이 초기화되지 않았습니다. 처리를 중단합니다.")
+                logger.debug(f"🛠️ Pipeline 상태: {type(self.diffusion_pipeline)}")
                 return result
+            
+            logger.debug(f"🛠️ Pipeline 확인됨: {type(self.diffusion_pipeline)}")
             logger.debug("🛠️ 모델 파이프라인으로 이미지 생성 시작")
+            
+            # 파라미터 디버깅
+            logger.debug(f"🛠️ prompt 타입: {type(prompts.get('background_prompt'))}, 내용: {prompts.get('background_prompt', '')[:100]}...")
+            logger.debug(f"🛠️ negative_prompt 타입: {type(prompts.get('negative_prompt'))}, 내용: {prompts.get('negative_prompt', '')[:100]}...")
+            logger.debug(f"🛠️ ip_adapter_image 타입: {type(processed_image)}, 모드: {processed_image.mode}, 크기: {processed_image.size}")
+            logger.debug(f"🛠️ generator 타입: {type(generator)}")
+            
             try:
-                result_image = self.diffusion_pipeline(
+                pipeline_result = self.diffusion_pipeline(
                     prompt=prompts["background_prompt"],        # 생성할 이미지의 주요 텍스트 설명 (이미지 품질과 콘셉트에 직접적 영향)
                     negative_prompt=prompts["negative_prompt"], # 생성 시 배제할 요소(예: 'blurry', 'text', 'logo') → 품질 안정성 향상
                     ip_adapter_image=processed_image,           # IP-Adapter 입력 이미지 (제품 구조, 색상, 특징 반영) → 유사성 높임
@@ -221,10 +229,26 @@ class ImgGenPipeline:
                     guidance_scale=5,                           # 프롬프트 강조 강도 (높으면 프롬프트 반영 ↑, 낮으면 창의성 ↑), 너무 높으면 비현실적 아티팩트 발생 가능 (보통 5~8)
                     num_images_per_prompt=1,                    # 한 번의 추론에서 생성할 이미지 개수 (↑시 VRAM 부담 커짐)
                     generator=generator,                        # 랜덤 시드 고정 (재현성 확보) → 동일 설정 시 항상 같은 이미지 생성
-                ).images[0]
+                )
+                
+                logger.debug(f"🛠️ Pipeline 결과 타입: {type(pipeline_result)}")
+                if hasattr(pipeline_result, 'images'):
+                    logger.debug(f"🛠️ pipeline_result.images 타입: {type(pipeline_result.images)}")
+                    logger.debug(f"🛠️ pipeline_result.images 길이: {len(pipeline_result.images) if hasattr(pipeline_result.images, '__len__') else 'N/A'}")
+                    if pipeline_result.images and len(pipeline_result.images) > 0:
+                        logger.debug(f"🛠️ pipeline_result.images[0] 타입: {type(pipeline_result.images[0])}")
+                        
+                result_image = pipeline_result.images[0]
                 logger.info("✅ 이미지 생성 성공")
             except Exception as e:
                 logger.error(f"❌ 이미지 생성 중 에러 발생: {e}")
+                logger.debug(f"🛠️ 오류 타입: {type(e)}")
+                logger.debug(f"🛠️ processed_image 타입: {type(processed_image)}")
+                logger.debug(f"🛠️ processed_image 모드: {processed_image.mode if hasattr(processed_image, 'mode') else 'N/A'}")
+                
+                # 추가 스택 트레이스 로깅
+                import traceback
+                logger.debug(f"🛠️ 스택 트레이스:\n{traceback.format_exc()}")
                 return result
 
             result_image.save(save_path)
