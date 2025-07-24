@@ -219,6 +219,8 @@ def get_model_pipeline(
                 "weight_name": "ip-adapter_sdxl.bin",
                 "scale": 0.7,
             }
+
+            logger.info(f"🛠️ IP-Adapter 로딩: {adapter_config['repo_id']}")
             model_pipeline.load_ip_adapter(
                 adapter_config["repo_id"],
                 subfolder=adapter_config["subfolder"],

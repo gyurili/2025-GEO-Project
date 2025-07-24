@@ -118,6 +118,7 @@ class ImgGenPipeline:
 
         for idx, image_path in enumerate(image_path_list):
             logger.debug(f"🛠️ {idx+1}/{len(image_path_list)}번째 이미지 생성 시작: {image_path}")
+            # 싱글 이미지 생성
             single_result = self._generate_single_image(
                 product=product,
                 image_path=image_path,
