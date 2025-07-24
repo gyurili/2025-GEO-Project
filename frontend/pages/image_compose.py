@@ -783,7 +783,7 @@ def show_generation_buttons(selected_user_images, selected_target_image, selecte
                 logger.info(f"✅ {generation_type} 합성 데이터 준비 완료 ({user_count}개 상품)")
                 
                 # API 클라이언트를 사용한 이미지 합성 호출
-                with st.spinner(f"{generation_type} 이미지 합성 중... ({user_count}개 상품 → 1개 결과)"):
+                with st.spinner(f"{generation_type} 이미지 합성 중... ({user_count}개 상품)"):
                     try:
                         result = compose_images(composition_data)
                         

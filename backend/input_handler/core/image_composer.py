@@ -162,7 +162,7 @@ class ImageComposer:
         try:
             logger.debug("🛠️ OpenAI API 호출 시작")
             response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": korean_request or "자연스럽게 합성해주세요"}
@@ -231,7 +231,7 @@ class ImageComposer:
         try:
             logger.debug("🛠️ OpenAI API 호출로 조합 의도 분석")
             response = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4.1-mini",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": korean_request}
