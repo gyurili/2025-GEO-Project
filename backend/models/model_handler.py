@@ -15,6 +15,10 @@ from controlnet_aux import MidasDetector
 from peft import PeftModel
 from utils.logger import get_logger
 
+"""
+get_vton_pipeline는 사용하지 않음
+"""
+
 logger = get_logger(__name__)
 
 load_dotenv()

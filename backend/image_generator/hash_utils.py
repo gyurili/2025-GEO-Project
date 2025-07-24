@@ -24,13 +24,18 @@ def generate_cache_key(
     Returns:
         str: 생성된 해시 키
     """
-    data = {
-        "product_info": product,
-        "image_name": [os.path.basename(image) for image in product.get("image_path_list", [])],
-        "prompt_mode": prompt_mode,
-        "seed": seed,
-        "extra": extra or {}
-    }
-    raw_string = json.dumps(data, sort_keys=True)
-    logger.debug(f"캐시 키 생성 데이터: {json.dumps(data, ensure_ascii=False, sort_keys=True)}")
-    return hashlib.md5(raw_string.encode("utf-8")).hexdigest()
+    try:
+        data = {
+            "product_info": product,
+            "image_name": [os.path.basename(image) for image in product.get("image_path_list", [])],
+            "prompt_mode": prompt_mode,
+            "seed": seed,
+            "extra": extra or {}
+        }
+        raw_string = json.dumps(data, sort_keys=True)
+        logger.debug(f"캐시 키 생성 데이터: {json.dumps(data, ensure_ascii=False, sort_keys=True)}")
+        return hashlib.md5(raw_string.encode("utf-8")).hexdigest()
+    except TypeError as e:
+        logger.error(f"❌ 캐시 키 생성 실패 (직렬화 오류): {e}")
+        fallback_string = f"{product}-{prompt_mode}-{seed}-{extra}"
+        return hashlib.md5(fallback_string.encode("utf-8")).hexdigest()
