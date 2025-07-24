@@ -1,4 +1,7 @@
 # 김민준
+fastapi
+streamlit
+uvicorn
 
 # 박규리
 openai
