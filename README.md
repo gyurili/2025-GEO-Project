@@ -69,6 +69,7 @@ source .venv/bin/activate
 ```ini
 OPENAI_API_KEY=YourOpenAIKey
 GEMINI_API_KEY=YourGeminiKey
+HF_TOKEN=YourHuggingfaceKey
 DB_HOST=localhost   # 또는 고정 DB IP
 DB_PASSWORD=your_password
 ```
@@ -156,6 +157,15 @@ python run.py
 
 ### 구조 요약 (단일 & 2대 이상 환경)
 
+```css
+[단일 서버]
+MySQL ✅     
+local_run.py ✅
+Proxy/VPN 적용
+run.py ✅
+.env (DB 고정 IP)
+```
+또는
 ```css
 [DB 서버]       [크롤링 서버(VPN)]
 MySQL ✅        local_run.py ✅
