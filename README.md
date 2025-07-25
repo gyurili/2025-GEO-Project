@@ -34,12 +34,12 @@
 - **AI 친화형 콘텐츠 자동화**로 디지털 격차 해소
 
 ### 기술스택
-＃ 마이ｓｑｌ 넣기
 
 - **언어**: ![Python](https://img.shields.io/badge/Python-3776AB?style=plastic&logo=Python&logoColor=white)
 ![Jupyter Notebook](https://img.shields.io/badge/jupyter-%23FA0F00?style=plastic&logo=jupyter&logoColor=white)
 - **프레임워크**: ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=plastic&logo=Streamlit&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=plastic&logo=FastAPI&logoColor=white)
+![MySQL](https://img.shields.io/badge/mysql-4479A1.svg?style=plastic&logo=mysql&logoColor=white)
 - **라이브러리**: ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=plastic&logo=PyTorch&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=plastic&logo=OpenAI&logoColor=white)
 ![Hugging Face](https://img.shields.io/badge/Hugging%20Face-FFD21E?style=plastic&logo=HuggingFace&logoColor=black)
@@ -60,7 +60,9 @@ chmod +x setup.sh
 # 2. 가상환경 활성화
 source .venv/bin/activate
 
-＃。ｅｎｖ항목 채워넣기
+# .env 설정
+OPENAI_API_KEY=Your API key for OPENAI
+GEMINI_API_KEY=Your API key for Gemini
 
 # 3. 실행
 python run.py
