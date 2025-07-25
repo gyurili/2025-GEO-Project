@@ -177,7 +177,7 @@ if __name__ == "__main__":
         start_local_crawler(
             db_config=db_config,
             openai_api_key=openai_api_key,
-            auto_crawl_interval=36000,   # 10시간마다 자동 저장
+            auto_crawl_interval=86400,   # 24시간마다 자동 저장
             signal_poll_interval=5       # 5초마다 polling
         )
         logger.info("✅ main 실행 성공")
