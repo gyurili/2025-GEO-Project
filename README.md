@@ -60,8 +60,6 @@ chmod +x setup.sh
 source .venv/bin/activate
 ```
 
----
-
 ### 2) 환경 변수 (.env)
 
 `.env` 파일은 프로젝트 루트에 위치합니다.
@@ -82,8 +80,6 @@ db_config:
   password: ""  # .env로 덮어씀
   db: geo_db
 ```
-
----
 
 ### 3) MySQL 설정
 
@@ -124,8 +120,6 @@ CREATE TABLE crawl_request_signal (
 
 > 포트 3306 외부 오픈 필요 (클라우드/GCP 방화벽 설정) 
 
----
-
 ### 4) 실행 순서
 
 ```bash
@@ -151,8 +145,6 @@ python run.py
 ```
 
 - competitor_main → DB에서 요약 조회 or 신호 등록 → local_run 반응
-
----
 
 ### 구조 요약 (단일 & 2대 이상 환경)
 
