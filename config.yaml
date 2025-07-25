@@ -15,7 +15,5 @@ input:
   price: 58000
   brand: 롤프
   features: 꼼꼼한 박음질, 고급스러운 원단, 클래식한 디자인
-  css_type: 1
   image_path_list:
-  - backend/data/input/product_d6525acf70174c238ca27dee61d4ea51_0.jpg
-  - backend/data/input/product_dafbbf6a90f54696abe7b679c124d462_1.jpg
+  - backend/data/input/product_617b3e196e18445c80f0852c93ea3dd8_0.jpg
