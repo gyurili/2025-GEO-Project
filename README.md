@@ -63,6 +63,8 @@ source .venv/bin/activate
 # .env 설정
 OPENAI_API_KEY=Your API key for OPENAI
 GEMINI_API_KEY=Your API key for Gemini
+DB_HOST=localhost
+DB_PASSWORD=your_password
 
 # 3. 실행
 python run.py
@@ -162,7 +164,7 @@ geopage/
 ＃ 제미나이 및 허깅페이스 모델 추가
 
 - **OpenAI GPT-4.1-mini**: OpenAI API 전용 (상업적 사용 가능, API 기반)
+- **Gemini-2.0-flash-preview-image-generation**: Google AI API 전용 (상업적 사용 가능, 이미지 생성 특화)
 - **Markr-AI/Gukbap-Qwen2.5-7B**: CC BY-NC 4.0 (비상업적 사용만 허용)
 - **SG161222/RealVisXL_V5.0**: OpenRAIL++ (상업적 사용 가능, 모델 사용 시 제한된 사용 정책 준수 필요)
 - **h94/IP-Adapter**: Apache-2.0 (상업적 사용 가능, 라이선스 및 저작권 고지 필요)
-- **Norod78/weird-fashion-show-outfits-sdxl-lora**: bespoke-lora-trained-license (상업적 이미지 생성 가능, 모델 자체 판매 불가, 크레딧 없이 사용 가능, 머지 공유 가능)
