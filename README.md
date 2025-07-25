@@ -52,23 +52,118 @@
 
 ---
 
+### 1) 시스템 의존성 및 패키지 설치
+
 ```bash
-# 1. 시스템 의존성 및 패키지 설치
 chmod +x setup.sh
 ./setup.sh
-
-# 2. 가상환경 활성화
 source .venv/bin/activate
+```
 
-# .env 설정
-OPENAI_API_KEY=Your API key for OPENAI
-GEMINI_API_KEY=Your API key for Gemini
-DB_HOST=localhost
+---
+
+### 2) 환경 변수 (.env)
+
+`.env` 파일은 프로젝트 루트에 위치합니다.
+
+```ini
+OPENAI_API_KEY=YourOpenAIKey
+GEMINI_API_KEY=YourGeminiKey
+DB_HOST=localhost   # 또는 고정 DB IP
 DB_PASSWORD=your_password
+```
 
-# 3. 실행
+`config.yaml`
+
+```yaml
+db_config:
+  host: ""      # .env로 덮어씀
+  user: GEOGEO
+  password: ""  # .env로 덮어씀
+  db: geo_db
+```
+
+---
+
+### 3) MySQL 설정
+
+**MySQL 설치:**
+
+- Windows: [다운로드](https://dev.mysql.com/downloads/installer/)
+- macOS: `brew install mysql`
+- Ubuntu: `sudo apt install mysql-server`
+
+**DB 및 테이블 생성:**
+
+```sql
+CREATE DATABASE geo_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'GEOGEO'@'%' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON geo_db.* TO 'GEOGEO'@'%';
+FLUSH PRIVILEGES;
+```
+
+**테이블 구조:**
+
+```sql
+USE geo_db;
+CREATE TABLE competitor_review_summary (
+    category VARCHAR(100) PRIMARY KEY,
+    review_summary TEXT,
+    num_reviews INT,
+    crawled_at DATETIME
+);
+
+CREATE TABLE crawl_request_signal (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    category VARCHAR(100),
+    status ENUM('pending', 'done') DEFAULT 'pending',
+    requested_at DATETIME,
+    completed_at DATETIME
+);
+```
+
+> 포트 3306 외부 오픈 필요 (클라우드/GCP 방화벽 설정) 
+
+---
+
+### 4) 실행 순서
+
+```bash
+# [OS별 PYTHONPATH 설정]
+# macOS/Linux
+export PYTHONPATH=/2025-GEO-Project
+# Windows
+set PYTHONPATH=c:/2025-GEO-Project
+```
+
+**1. 크롤러(local_run.py) 실행 (VPN/프록시 적용 후)**
+
+```bash
+python backend/competitor_analysis/core/local_run.py
+```
+
+- 리뷰 크롤링 → 요약 → DB 저장 (백그라운드 실행 필요)
+
+**2. 메인 애플리케이션 실행(run.py)**
+
+```bash
 python run.py
 ```
+
+- competitor_main → DB에서 요약 조회 or 신호 등록 → local_run 반응
+
+---
+
+### 구조 요약 (단일 & 2대 이상 환경)
+
+```css
+[DB 서버]       [크롤링 서버(VPN)]
+MySQL ✅        local_run.py ✅
+run.py ✅       Proxy/VPN 적용
+.env (DB 고정 IP)
+```
+
+> 핵심: 모든 장비는 DB에 접근 가능해야 함 (3306 포트 오픈)
 
 ## 3. 📂 프로젝트 구조
 
@@ -161,10 +256,14 @@ geopage/
 ## 7. 📄 사용한 모델 및 라이센스
 
 ---
-＃ 제미나이 및 허깅페이스 모델 추가
 
 - **OpenAI GPT-4.1-mini**: OpenAI API 전용 (상업적 사용 가능, API 기반)
 - **Gemini-2.0-flash-preview-image-generation**: Google AI API 전용 (상업적 사용 가능, 이미지 생성 특화)
 - **Markr-AI/Gukbap-Qwen2.5-7B**: CC BY-NC 4.0 (비상업적 사용만 허용)
 - **SG161222/RealVisXL_V5.0**: OpenRAIL++ (상업적 사용 가능, 모델 사용 시 제한된 사용 정책 준수 필요)
 - **h94/IP-Adapter**: Apache-2.0 (상업적 사용 가능, 라이선스 및 저작권 고지 필요)
+- **diffusers/stable-diffusion-xl-1.0-inpainting-0.1**: OpenRAIL++ (상업적 사용 가능, 모델 사용 시 제한된 사용 정책 준수 필요)
+- **madebyollin/sdxl-vae-fp16-fix**: OpenRAIL++ (상업적 사용 가능, 모델 사용 시 제한된 사용 정책 준수 필요)
+- **diffusers/controlnet-depth-sdxl-1.0**: OpenRAIL++ (상업적 사용 가능, 모델 사용 시 제한된 사용 정책 준수 필요)
+- **lllyasviel/ControlNet**: OpenRAIL++ (상업적 사용 가능, 모델 사용 시 제한된 사용 정책 준수 필요)
+- **Norod78/weird-fashion-show-outfits-sdxl-lora**: bespoke-lora-trained-license (상업적 이미지 생성 가능, 모델 자체 판매 불가, 크레딧 없이 사용 가능, 머지 공유 가능)
