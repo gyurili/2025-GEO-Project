@@ -19,7 +19,7 @@ def build_prompt(product: dict) -> str:
     - 특징: {product['features']}
     """
 
-def safe_generate_prompt(system_prompt: str, user_prompt: str, description: str) -> str | None:
+def generate_prompt(system_prompt: str, user_prompt: str, description: str) -> str | None:
     """
     GPT 기반 프롬프트 생성을 안전하게 실행 (예외 처리 공통화)
     """
@@ -52,7 +52,7 @@ def generate_background_prompt(product: dict) -> str | None:
         "- The background should complement the product, not overpower it.\n"
         "- Output one short sentence in English, under 15 words."
     )
-    return safe_generate_prompt(system_prompt, build_prompt(product), "배경 프롬프트")
+    return generate_prompt(system_prompt, build_prompt(product), "배경 프롬프트")
 
 
 def generate_human_prompt(product: dict) -> str | None:
@@ -65,7 +65,7 @@ def generate_human_prompt(product: dict) -> str | None:
         "- The background should complement the product, not overpower it.\n"
         "- Output one short sentence in English, under 15 words."
     )
-    return safe_generate_prompt(system_prompt, build_prompt(product), "사람 프롬프트")
+    return generate_prompt(system_prompt, build_prompt(product), "사람 프롬프트")
 
 
 def generate_negative_prompt(product: dict) -> str | None:
@@ -77,7 +77,7 @@ def generate_negative_prompt(product: dict) -> str | None:
         "- Output a comma-separated list of keywords only.\n"
         "- Example: text, logo, clutter, busy background, bright colors, excessive objects."
     )
-    return safe_generate_prompt(system_prompt, build_prompt(product), "네거티브 프롬프트")
+    return generate_prompt(system_prompt, build_prompt(product), "네거티브 프롬프트")
 
 def generate_prompts(product: dict, mode: str = "human") -> dict:
     try:

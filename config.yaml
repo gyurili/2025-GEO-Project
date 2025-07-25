@@ -7,7 +7,7 @@ data:
 db_config:
   host: 34.29.11.234
   user: GEOGEO
-  password: GEOGEO1234!
+  password: ""
   db: geo_db
 input:
   name: 롤프 남성 정장자켓 수트마이 양복상의
