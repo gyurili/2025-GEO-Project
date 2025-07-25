@@ -17,6 +17,7 @@
 ### **배경**
 
 - 최근 온라인 검색 패러다임은 **SEO(키워드 중심)에서 GEO(Generative Engine Optimization) 중심으로 변화**하고 있습니다.
+＃ 한영 통일
 - 기존 상세페이지는 이미지 중심으로 **AI 검색 노출에 불리한 구조**를 갖고 있습니다.
 - AI 검색에서 제품이 노출되려면 **AI가 이해할 수 있는 구조적 콘텐츠**가 필요합니다. 그러나 대부분의 소상공인은 **이 변화를 따라가기 어려운 현실**에 직면해 있습니다.
 
@@ -33,6 +34,7 @@
 - **AI 친화형 콘텐츠 자동화**로 디지털 격차 해소
 
 ### 기술스택
+＃ 마이ｓｑｌ 넣기
 
 - **언어**: ![Python](https://img.shields.io/badge/Python-3776AB?style=plastic&logo=Python&logoColor=white)
 ![Jupyter Notebook](https://img.shields.io/badge/jupyter-%23FA0F00?style=plastic&logo=jupyter&logoColor=white)
@@ -57,6 +59,8 @@ chmod +x setup.sh
 
 # 2. 가상환경 활성화
 source .venv/bin/activate
+
+＃。ｅｎｖ항목 채워넣기
 
 # 3. 실행
 python run.py
@@ -118,7 +122,7 @@ geopage/
 |:------:|:------:|:------:|:------:|
 | <a href="https://github.com/kyakyak"><img src="https://github.com/kyakyak.png" width="100"/></a> | <a href="https://github.com/kmjune1535"><img src="https://github.com/kmjune1535.png" width="100"/></a> | <a href="https://github.com/gyurili"><img src="https://github.com/gyurili.png" width="100"/></a> | <a href="https://github.com/YS-2357"><img src="https://github.com/YS-2357.png" width="100"/></a> |
 | 팀장/ 경쟁분석/ DB 관리 | 프론트엔드/ 이미지 생성 | GEO 최적화/ 상세페이지 생성 | 이미지 생성/ 서버 관리 |
-| <a href="mailto:udosjdjdjdj@gmail.com"><img src="https://img.shields.io/badge/Gmail-D14836?style=plastic&logo=gmail&logoColor=white"/></a> | 메일 | <a href="mailto:inglifestora@naver.com"><img src="https://img.shields.io/badge/NaverMail-03C75A?style=plastic&logo=naver&logoColor=white"/></a> | <a href="mailto:joungyoungsun20@gmail.com"><img src="https://img.shields.io/badge/Gmail-D14836?style=plastic&logo=gmail&logoColor=white"/></a> | 
+| <a href="mailto:udosjdjdjdj@gmail.com"><img src="https://img.shields.io/badge/Gmail-D14836?style=plastic&logo=gmail&logoColor=white"/></a> | <a href="mailto:kmjune1535@gmail.com"><img src="https://img.shields.io/badge/Gmail-D14836?style=plastic&logo=gmail&logoColor=white"/></a>  | <a href="mailto:inglifestora@naver.com"><img src="https://img.shields.io/badge/NaverMail-03C75A?style=plastic&logo=naver&logoColor=white"/></a> | <a href="mailto:joungyoungsun20@gmail.com"><img src="https://img.shields.io/badge/Gmail-D14836?style=plastic&logo=gmail&logoColor=white"/></a> | 
 
 ## 5. 📊 타임라인
 
@@ -153,6 +157,7 @@ geopage/
 ## 7. 📄 사용한 모델 및 라이센스
 
 ---
+＃ 제미나이 및 허깅페이스 모델 추가
 
 - **OpenAI GPT-4.1-mini**: OpenAI API 전용 (상업적 사용 가능, API 기반)
 - **Markr-AI/Gukbap-Qwen2.5-7B**: CC BY-NC 4.0 (비상업적 사용만 허용)
