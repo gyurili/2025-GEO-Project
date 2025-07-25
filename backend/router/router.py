@@ -59,7 +59,6 @@ async def process_product_input(
     price: int = Form(..., description="가격"),
     brand: str = Form(..., description="브랜드"),
     features: str = Form(..., description="상품 특징"),
-    css_type: int = Form(..., description="CSS 타입"),
     image: Optional[UploadFile] = File(None, description="상품 이미지"),
     handler: InputHandler = Depends(get_input_handler)
 ):
@@ -81,8 +80,7 @@ async def process_product_input(
             "category": category,
             "price": price,
             "brand": brand,
-            "features": features,
-            "css_type": css_type
+            "features": features
         }
         logger.debug(f"🛠️ 폼 데이터 구성 완료: {form_data}")
         
@@ -115,7 +113,6 @@ async def process_product_input_multiple(
     price: int = Form(..., description="가격"),
     brand: str = Form(..., description="브랜드"),
     features: str = Form(..., description="상품 특징"),
-    css_type: int = Form(..., description="CSS 타입"),
     images: List[UploadFile] = File(..., description="상품 이미지들 (다중)"),
     handler: InputHandler = Depends(get_input_handler)
 ):
@@ -142,8 +139,7 @@ async def process_product_input_multiple(
             "category": category,
             "price": price,
             "brand": brand,
-            "features": features,
-            "css_type": css_type
+            "features": features
         }
         logger.debug(f"🛠️ 폼 데이터 구성 완료: {form_data}")
         

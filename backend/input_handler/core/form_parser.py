@@ -70,47 +70,6 @@ class FormParser:
             logger.error(f"❌ 가격 검증 실패: {e}")
             raise ValueError(f"올바른 가격을 입력해주세요: {str(e)}")
     
-    def validate_css_type(self, css_type: Any) -> int:
-        """CSS 타입 유효성 검증"""
-        logger.debug(f"🛠️ CSS 타입 유효성 검증 시작: 입력값={css_type}, 타입={type(css_type)}")
-        
-        try:
-            if isinstance(css_type, str):
-                logger.debug("🛠️ 문자열 CSS 타입 입력 감지, 숫자 변환 시작")
-                css_type = int(css_type.strip())
-                logger.debug(f"🛠️ 문자열 CSS 타입 변환 완료: '{css_type}' -> {css_type}")
-            else:
-                css_type = int(css_type)
-                logger.debug(f"🛠️ 숫자 CSS 타입 변환 완료: {css_type}")
-                
-            # CSS 타입 값 검증
-            if css_type not in [1, 2]:
-                logger.warning(f"⚠️ CSS 타입 범위 오류: {css_type} (1 또는 2만 허용)")
-                raise ValueError("CSS 타입은 1 또는 2만 선택 가능합니다.")
-                
-            logger.info(f"✅ CSS 타입 유효성 검증 완료: {css_type}")
-            return css_type
-            
-        except ValueError as e:
-            logger.error(f"❌ CSS 타입 검증 실패: {e}")
-            raise ValueError(f"올바른 CSS 타입을 선택해주세요: {str(e)}")
-        """상품 특징 추출 및 정리"""
-        logger.debug(f"🛠️ 상품 특징 추출 시작: 입력 길이={len(features_input) if features_input else 0}")
-        
-        if not features_input:
-            logger.debug("🛠️ 빈 특징 입력, 빈 문자열 반환")
-            return ""
-            
-        features = self.clean_text(features_input)
-        
-        # 특징이 너무 길면 자르기
-        if len(features) > 500:
-            logger.warning(f"⚠️ 상품 특징 길이 초과: {len(features)}자 -> 500자로 단축")
-            features = features[:497] + "..."
-            
-        logger.info(f"✅ 상품 특징 추출 완료: {len(features)}자")
-        return features
-    
     def validate_category(self, category: str) -> str:
         """카테고리 유효성 검증"""
         logger.debug(f"🛠️ 카테고리 유효성 검증 시작: '{category}'")
@@ -222,10 +181,6 @@ class FormParser:
             logger.debug("🛠️ 브랜드 검증 시작")
             parsed_data['brand'] = self.validate_brand(form_data.get('brand', ''))
             
-            # CSS 타입
-            logger.debug("🛠️ CSS 타입 검증 시작")
-            parsed_data['css_type'] = self.validate_css_type(form_data.get('css_type', 1))
-            
             # 특징
             logger.debug("🛠️ 상품 특징 처리 시작")
             parsed_data['features'] = self.extract_features(form_data.get('features', ''))
@@ -262,38 +217,3 @@ class FormParser:
         except Exception as e:
             logger.error(f"❌ 폼 데이터 파싱 실패: {e}")
             raise ValueError(f"입력 데이터 검증 실패: {str(e)}")
-    
-    def create_product_summary(self, product_data: Dict[str, Any]) -> str:
-        """상품 데이터 요약 생성"""
-        logger.debug("🛠️ 상품 데이터 요약 생성 시작")
-        logger.debug(f"🛠️ 요약할 데이터 키: {list(product_data.keys())}")
-        
-        try:
-            summary = f"""
-상품 정보 요약:
-- 상품명: {product_data['name']}
-- 카테고리: {product_data['category']}
-- 브랜드: {product_data['brand']}
-- 가격: {product_data['price']:,}원
-- CSS 타입: {product_data['css_type']}
-- 특징: {product_data['features'][:100]}{'...' if len(product_data['features']) > 100 else ''}
-            """.strip()
-            
-            # 선택적 필드 추가
-            if product_data.get('image_path'):
-                if isinstance(product_data['image_path'], list):
-                    summary += f"\n- 이미지: {len(product_data['image_path'])}개"
-                    logger.debug(f"🛠️ 이미지 정보 추가: {len(product_data['image_path'])}개")
-                else:
-                    summary += f"\n- 이미지: {product_data['image_path']}"
-                    logger.debug("🛠️ 단일 이미지 정보 추가")
-            else:
-                summary += "\n- 이미지: 없음"
-                logger.debug("🛠️ 이미지 없음 표시")
-                
-            logger.info(f"✅ 상품 데이터 요약 생성 완료: {len(summary)}자")
-            return summary
-            
-        except Exception as e:
-            logger.error(f"❌ 상품 요약 생성 실패: {e}")
-            return "상품 요약 생성 중 오류가 발생했습니다."
