@@ -42,7 +42,12 @@ async def lifespan(app: FastAPI):
         input_handler = InputHandler()
         logger.info("✅ InputHandler 초기화 완료")
 
-        # 6. 사용자 안내
+        # 초기화된 핸들러 정보
+        if input_handler:
+            logger.debug(f"🛠️ 프로젝트 루트: {input_handler.project_root}")
+            logger.debug(f"🛠️ 데이터 디렉토리: {input_handler.data_dir}")
+
+        # 사용자 안내
         logger.info("\n" + "=" * 60)
         logger.info("🎉 모든 서비스가 성공적으로 시작되었습니다!")
         logger.info("=" * 60)
@@ -51,12 +56,7 @@ async def lifespan(app: FastAPI):
         logger.info("💡 상태 확인: http://localhost:8010/health")
         logger.info("=" * 60)
         logger.info("종료하려면 Ctrl+C를 누르세요.")
-        logger.info("=" * 60)
-        
-        # 초기화된 핸들러 정보
-        if input_handler:
-            logger.debug(f"🛠️ 프로젝트 루트: {input_handler.project_root}")
-            logger.debug(f"🛠️ 데이터 디렉토리: {input_handler.data_dir}")
+        logger.info("=" * 60)    
         
     except Exception as e:
         logger.error(f"❌ InputHandler 초기화 실패: {e}")
