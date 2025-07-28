@@ -2,7 +2,7 @@
 
 ---
 
-![Demo]()
+![Demo](assets/demo.gif)
 
 > **GEOPage**는 생성형 AI 기반으로 소상공인의 상품 상세페이지를 자동 생성하여 AI 검색(GEO)에 최적화된 마케팅 콘텐츠를 제공하는 플랫폼입니다.
 
@@ -142,13 +142,13 @@ geopage/
 
 ---
 
-- 📘 **최종 보고서**: 
-- 📽️ **발표자료 (PPT)**: 
+- 📘 **최종 보고서**: [다운로드](https://drive.google.com/file/d/1CXLz8RkbkjOCAZcKzpJ8hKnhveFN0kF5/view?usp=sharing)
+- 📽️ **발표자료 (PPT)**: [다운로드](https://your-ppt-link.com)
 - 🗂️ **팀원별 협업 일지**
-    - 이학진 협업일지:
-    - 김민준 협업일지:
-    - 박규리 협업일지:
-    - 정영선 협업일지:
+    - [이학진 협업일지](https://www.notion.so/22500f54e76e809e865fef8ddaa73bcd?source=copy_link)
+    - [김민준 협업일지](https://www.notion.so/1bb8e82988b280039641cff37cbdd44a?source=copy_link)
+    - [박규리 협업일지](https://www.notion.so/1f1caf59f0188065bec3c9fefc30f7e3?source=copy_link)
+    - [정영선 협업일지](https://sapphire-cart-f52.notion.site/22201c050cec81388f3ad4a7e1694e7d)
 
 ## 7. 📄 사용한 모델 및 라이센스
 
