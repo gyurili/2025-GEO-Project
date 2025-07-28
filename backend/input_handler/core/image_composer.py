@@ -68,7 +68,7 @@ class ImageComposer:
         
         Args:
             image_path: 이미지 파일 경로
-            image_type: 이미지 타입 (로깅용) - 'user', 'target', 'mask'
+            image_type: 이미지 타입 (로깅용) - 'user', 'target'
             target_mode: 변환할 이미지 모드 (기본값: 'RGB')
         
         Returns:
@@ -109,13 +109,11 @@ class ImageComposer:
         if num_products > 1:
             product_refs = ", ".join([f"(#{i+1})" for i in range(num_products)])
             target_ref = f"(#{num_products + 1})"
-            mask_ref = f"(#{num_products + 2})" if num_images > num_products + 1 else ""
         else:
             product_refs = "(#1)"
             target_ref = "(#2)"
-            mask_ref = "(#3)" if num_images > 2 else ""
         
-        logger.debug(f"🛠️ 참조 번호 - 상품: {product_refs}, 타겟: {target_ref}, 마스크: {mask_ref}")
+        logger.debug(f"🛠️ 참조 번호 - 상품: {product_refs}, 타겟: {target_ref}")
         
         if generation_type == "model":
             system_prompt = f"""
@@ -124,7 +122,7 @@ class ImageComposer:
 
     규칙:
     1. 자연스럽고 현실적인 이미지 생성을 위한 프롬프트를 작성하세요
-    2. 상품 이미지 참조: {product_refs}, 모델 이미지: {target_ref}{', 마스크: ' + mask_ref if mask_ref else ''}
+    2. 상품 이미지 참조: {product_refs}, 모델 이미지: {target_ref}
     3. 텍스트나 글자가 포함되지 않도록 지시하세요
     4. "Generate a natural-looking image"로 시작하는 것을 권장합니다
 
@@ -140,24 +138,26 @@ class ImageComposer:
             """
         else:  # background
             system_prompt = f"""
-    당신은 이미지 생성 프롬프트 전문가입니다. 
-    사용자의 한글 요청사항을 상품 배경 합성을 위한 영문 이미지 생성 프롬프트로 변환해주세요.
+당신은 이미지 생성 프롬프트 전문가입니다. 
+사용자의 한글 요청사항을 상품 배경 합성을 위한 영문 이미지 생성 프롬프트로 변환해주세요.
 
-    규칙:
-    1. 자연스럽고 현실적인 이미지 생성을 위한 프롬프트를 작성하세요
-    2. 상품 이미지 참조: {product_refs}, 배경 이미지: {target_ref}
-    3. 텍스트나 글자가 포함되지 않도록 지시하세요
-    4. "Generate a natural-looking image"로 시작하는 것을 권장합니다
+규칙:
+1. 자연스럽고 현실적인 이미지 생성을 위한 프롬프트를 작성하세요
+2. 상품 이미지 참조: {product_refs}
+3. 배경은 이미지가 아닌 텍스트 설명으로 제공됩니다
+4. 텍스트나 글자가 포함되지 않도록 지시하세요
+5. "Generate a natural-looking image"로 시작하는 것을 권장합니다
 
-    다중 상품과 배경 합성:
-    - 여러 상품이 있는 경우 배경에 자연스럽게 배치하도록 지시하세요
-    - "placed in", "positioned on", "arranged in" 등의 표현을 사용하세요
-    - 상품들의 원래 형태와 특성을 유지하도록 지시하세요
+배경 기반 상품 배치:
+- 제공된 배경 설명에 맞는 환경을 생성하세요
+- 상품을 해당 환경에 자연스럽게 배치하도록 지시하세요
+- "placed in", "positioned in", "arranged in" 등의 표현을 사용하세요
+- 상품의 원래 형태와 특성을 유지하도록 지시하세요
 
-    예시:
-    - 단일 상품: "Generate a natural-looking image of the product from {product_refs} elegantly placed in the setting from {target_ref}."
-    - 다중 상품: "Generate a natural-looking image with all products from {product_refs} beautifully arranged in the setting from {target_ref}, maintaining their individual characteristics."
-            """
+예시:
+- 단일 상품: "Generate a natural-looking image of the product from {product_refs} elegantly placed in [배경 설명]."
+- 다중 상품: "Generate a natural-looking image with all products from {product_refs} beautifully arranged in [배경 설명], maintaining their individual characteristics."
+        """
         
         try:
             logger.debug("🛠️ OpenAI API 호출 시작")
@@ -177,6 +177,64 @@ class ImageComposer:
             
         except Exception as e:
             logger.error(f"❌ OpenAI API 호출 실패: {e}")
+            return None
+        
+    def generate_background_prompt_with_openai(self, base_prompt: str, custom_request: str, num_products: int) -> Optional[str]:
+        """OpenAI를 사용하여 배경 프롬프트와 사용자 요청사항을 결합한 새로운 프롬프트 생성"""
+        logger.debug(f"🛠️ 배경 프롬프트 생성: {num_products}개 상품")
+        
+        if not self.openai_client:
+            logger.error("❌ OpenAI 클라이언트가 초기화되지 않음")
+            return None
+        
+        # 이미지 참조 번호 생성
+        if num_products > 1:
+            product_refs = ", ".join([f"(#{i+1})" for i in range(num_products)])
+        else:
+            product_refs = "(#1)"
+        
+        system_prompt = f"""
+당신은 이미지 생성 프롬프트 전문가입니다.
+기본 배경 설명과 사용자의 추가 요청사항을 결합하여 상품 배경 합성을 위한 완벽한 영문 프롬프트를 생성해주세요.
+
+입력 정보:
+- 기본 배경 프롬프트: {base_prompt}
+- 사용자 추가 요청사항: {custom_request if custom_request else "없음"}
+- 상품 이미지 참조: {product_refs}
+
+생성 규칙:
+1. "Generate a natural-looking image"로 시작하세요
+2. 기본 배경의 특성을 유지하면서 사용자 요청사항을 자연스럽게 통합하세요
+3. 상품이 배경에 자연스럽게 배치되도록 지시하세요
+4. 텍스트나 글자가 포함되지 않도록 명시하세요
+5. 상품의 원래 형태와 특성을 유지하도록 지시하세요
+
+상품 배치 표현:
+- "elegantly placed in", "beautifully positioned in", "naturally arranged in" 등 사용
+- 다중 상품의 경우 "harmoniously arranged together" 등의 표현 추가
+
+프롬프트 예시 구조:
+"Generate a natural-looking image of [상품 설명] [배치 방식] [결합된 배경 설명], [추가 요청사항 반영], maintaining the product's original characteristics, no text or writing visible."
+"""
+
+        try:
+            logger.debug("🛠️ OpenAI API 호출로 배경 프롬프트 생성")
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"기본 배경: {base_prompt}\n추가 요청: {custom_request or '자연스럽게 배치'}"}
+                ],
+                max_tokens=400,
+                temperature=0.7
+            )
+            
+            prompt = response.choices[0].message.content.strip()
+            logger.info(f"✅ 배경 프롬프트 생성 완료: {len(prompt)}자")
+            return prompt
+            
+        except Exception as e:
+            logger.error(f"❌ 배경 프롬프트 생성 실패: {e}")
             return None
     
     def analyze_combination_intent(self, korean_request: str, num_products: int) -> Dict[str, Any]:
@@ -341,7 +399,6 @@ class ImageComposer:
         try:
             user_images_data = composition_data.get('user_images', [])
             target_image_data = composition_data.get('target_image')
-            mask_image_data = composition_data.get('mask_image')
             generation_options = composition_data.get('generation_options', {})
             generation_type = generation_options.get('type', 'background')
             
@@ -368,13 +425,13 @@ class ImageComposer:
                 if combination_info['combine_products']:
                     # 모든 상품을 함께 착용한 이미지 생성
                     result = self._generate_combined_image_for_result(
-                        user_images_data, target_image_data, mask_image_data,
+                        user_images_data, target_image_data,
                         generation_options, generation_type, i + 1
                     )
                 else:
                     # 개별 상품만 착용한 이미지 생성
                     result = self._generate_individual_image_for_result(
-                        user_images_data[i], target_image_data, mask_image_data,
+                        user_images_data[i], target_image_data,
                         generation_options, generation_type, i + 1
                     )
                 
@@ -401,7 +458,7 @@ class ImageComposer:
             logger.error(f"❌ 이미지 합성 프로세스 실패: {e}")
             return None
 
-    def _generate_combined_image_for_result(self, user_images_data, target_image_data, mask_image_data, 
+    def _generate_combined_image_for_result(self, user_images_data, target_image_data, 
                                       generation_options, generation_type, result_index) -> Optional[Dict[str, Any]]:
         """모든 상품을 함께 착용한 이미지 생성 (단일 결과물용)"""
         logger.debug(f"🛠️ 통합 착용 이미지 생성: 결과물 {result_index}")
@@ -428,19 +485,11 @@ class ImageComposer:
                 return None
             images.append(model_image)
             logger.debug(f"✅ 모델 이미지 추가: {model_image.size}")
-            
-            # 마스크 이미지 (선택)
-            if mask_image_data and 'path' in mask_image_data:
-                mask_image = self._load_image_safely(mask_image_data['path'], 'mask', 'L')
-                if mask_image:
-                    images.append(mask_image)
-                    logger.debug(f"✅ 마스크 이미지 추가: {mask_image.size}")
         
         # ✅ 실제 이미지 순서에 맞는 프롬프트 생성
         total_images = len(images)
         logger.debug(f"🛠️ 총 전달할 이미지 수: {total_images}")
-        logger.debug(f"🛠️ 이미지 구성: 상품 {len(user_images_data)}개 + 모델/배경 1개" + 
-                    (f" + 마스크 1개" if generation_type == 'model' and mask_image_data else ""))
+        logger.debug(f"🛠️ 이미지 구성: 상품 {len(user_images_data)}개 + 모델/배경 1개")
         
         # 통합 착용용 프롬프트 생성
         if generation_type == 'model':
@@ -451,11 +500,13 @@ class ImageComposer:
                 num_products=len(user_images_data)
             )
         else:  # background
-            base_prompt = target_image_data.get('prompt', '')
-            prompt = self.convert_korean_request_to_prompt(
-                f"다음 배경에 모든 상품을 자연스럽게 배치해주세요: {base_prompt}",
-                num_images=total_images,
-                generation_type='background',
+            # 배경 합성 - OpenAI로 새로운 프롬프트 생성
+            base_prompt = generation_options.get('base_prompt', '')
+            custom_prompt = generation_options.get('custom_prompt', '')
+            
+            prompt = self.generate_background_prompt_with_openai(
+                base_prompt=base_prompt,
+                custom_request=custom_prompt,
                 num_products=len(user_images_data)
             )
         
@@ -489,7 +540,7 @@ class ImageComposer:
             'images_used': f"상품 {len(user_images_data)}개 + 모델/배경 1개"
         }
 
-    def _generate_individual_image_for_result(self, user_image_data, target_image_data, mask_image_data,
+    def _generate_individual_image_for_result(self, user_image_data, target_image_data,
                                         generation_options, generation_type, result_index) -> Optional[Dict[str, Any]]:
         """개별 상품만 착용한 이미지 생성 (단일 결과물용)"""
         logger.debug(f"🛠️ 개별 착용 이미지 생성: 결과물 {result_index}")
@@ -515,19 +566,14 @@ class ImageComposer:
                 return None
             images.append(model_image)
             logger.debug(f"✅ 모델 이미지 추가: {model_image.size}")
-            
-            # 마스크 이미지 (선택)
-            if mask_image_data and 'path' in mask_image_data:
-                mask_image = self._load_image_safely(mask_image_data['path'], 'mask', 'L')
-                if mask_image:
-                    images.append(mask_image)
-                    logger.debug(f"✅ 마스크 이미지 추가: {mask_image.size}")
+        elif generation_type == 'background':
+            # 배경의 경우 이미지를 로드하지 않고 프롬프트만 사용
+            logger.debug("🛠️ 배경 합성 - 이미지 로드 없이 프롬프트 기반 생성")
         
         # ✅ 실제 이미지 순서에 맞는 프롬프트 생성
         total_images = len(images)
         logger.debug(f"🛠️ 총 전달할 이미지 수: {total_images}")
-        logger.debug(f"🛠️ 이미지 구성: 상품 1개 + 모델/배경 1개" + 
-                    (f" + 마스크 1개" if generation_type == 'model' and mask_image_data else ""))
+        logger.debug(f"🛠️ 이미지 구성: 상품 1개 + 모델/배경 1개")
         
         # 개별 착용용 프롬프트 생성
         if generation_type == 'model':
@@ -538,22 +584,25 @@ class ImageComposer:
                 num_products=1  # ✅ 개별 생성이므로 1개
             )
         else:  # background
-            base_prompt = target_image_data.get('prompt', '')
-            prompt = self.convert_korean_request_to_prompt(
-                f"다음 배경에 상품을 자연스럽게 배치해주세요: {base_prompt}",
-                num_images=total_images,
-                generation_type='background',
+            # 배경 합성 - OpenAI로 새로운 프롬프트 생성
+            base_prompt = generation_options.get('base_prompt', '')
+            custom_prompt = generation_options.get('custom_prompt', '')
+            
+            prompt = self.generate_background_prompt_with_openai(
+                base_prompt=base_prompt,
+                custom_request=custom_prompt,
                 num_products=1
             )
         
         if not prompt:
-            logger.error(f"❌ 상품 {result_index} 프롬프트 변환 실패")
+            logger.error(f"❌ 상품 {result_index} 프롬프트 생성 실패")
             return None
         
         logger.debug(f"🛠️ 생성된 프롬프트: {prompt}")
         
-        # ✅ 이미지 생성 (단일 상품 이미지 + 모델/배경 이미지 전달)
+        # 이미지 생성 (상품 이미지만 전달)
         result_image = self.generate_image_with_gemini(prompt, images)
+        
         if not result_image:
             logger.error(f"❌ 상품 {result_index} Gemini 이미지 생성 실패")
             return None

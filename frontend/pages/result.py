@@ -460,7 +460,7 @@ def main():
     st.markdown("---")
     
     # 생성 상세 정보
-    display_generation_details(result_data)
+    # display_generation_details(result_data)
     
     # 네비게이션 버튼
     st.markdown("---")
@@ -480,7 +480,7 @@ def main():
             keys_to_clear = [
                 'processed_data', 'composition_result', 'composition_data', 'detail_page_result',
                 'selected_user_images_model', 'selected_user_images_background',
-                'selected_model_image', 'selected_mask_image', 'selected_background',
+                'selected_model_image', 'selected_background',
                 'analysis_result', 'analysis_started', 'combined_results'
             ]
             for key in keys_to_clear:
