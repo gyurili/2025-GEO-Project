@@ -470,26 +470,8 @@ def display_generation_options():
         help="이미지 생성 시 추가로 반영하고 싶은 요청사항을 입력해주세요."
     )
     
-    # 생성 품질 설정
-    quality = st.selectbox(
-        "생성 품질",
-        options=["표준", "고품질", "최고품질"],
-        index=1,
-        help="이미지 생성 품질을 선택해주세요. 품질이 높을수록 처리 시간이 길어집니다."
-    )
-    
-    # 생성 스타일
-    style = st.selectbox(
-        "생성 스타일",
-        options=["자연스러운", "상업적", "아티스틱", "미니멀"],
-        index=0,
-        help="이미지의 전체적인 스타일을 선택해주세요."
-    )
-    
     return {
-        'custom_prompt': custom_prompt.strip() if custom_prompt else None,
-        'quality': quality,
-        'style': style
+        'custom_prompt': custom_prompt.strip() if custom_prompt else None
     }
 
 def show_model_generation_tab():
@@ -546,13 +528,22 @@ def show_background_generation_tab():
 
     st.markdown("---")
 
-    # 품질/스타일 옵션(선택)
-    generation_options = display_generation_options_full()
-    generation_options['type'] = 'background'
-    # 🟦 카테고리 기반 프롬프트 사용
-    generation_options['category'] = selected_category_info['category']
-    generation_options['subcategory'] = selected_category_info['subcategory']
-    generation_options['custom_prompt'] = selected_category_info['prompt']  # 기존 커스텀 대신
+    # 사용자 요청사항만 입력받기
+    custom_prompt = st.text_area(
+        "추가 요청사항 (선택사항)",
+        placeholder="예: 더 밝은 조명, 상품을 중앙에 배치, 고급스러운 분위기",
+        height=100,
+        help="선택한 배경에 추가로 반영하고 싶은 요청사항을 입력해주세요.",
+        key="background_custom_prompt"
+    )
+
+    generation_options = {
+        'type': 'background',
+        'category': selected_category_info['category'],
+        'subcategory': selected_category_info['subcategory'],
+        'base_prompt': selected_category_info['prompt'],  # JSON의 기본 프롬프트
+        'custom_prompt': custom_prompt.strip() if custom_prompt else None
+    }
 
     # 합성 버튼
     show_generation_buttons(selected_user_images, selected_category_info, generation_options)
@@ -588,47 +579,6 @@ def display_background_category_ui(backgrounds_json):
         "subcategory": selected_subcategory,
         "prompt": prompt,
         "example_image": example_image
-    }
-
-
-
-def display_generation_options_full():
-    """전체 이미지 생성 옵션 (배경 생성용)"""
-    logger.debug("🛠️ 전체 이미지 생성 옵션 표시 시작")
-    
-    st.subheader("⚙️ 이미지 생성 옵션")
-    
-    # 생성 요청사항 (선택사항)
-    custom_prompt = st.text_area(
-        "생성 요청사항 (선택사항)",
-        placeholder="예: 밝은 배경, 자연스러운 조명, 고품질 사진",
-        height=100,
-        help="이미지 생성 시 추가로 반영하고 싶은 요청사항을 입력해주세요.",
-        key="background_prompt"
-    )
-    
-    # 생성 품질 설정
-    quality = st.selectbox(
-        "생성 품질",
-        options=["표준", "고품질", "최고품질"],
-        index=1,
-        help="이미지 생성 품질을 선택해주세요. 품질이 높을수록 처리 시간이 길어집니다.",
-        key="background_quality"
-    )
-    
-    # 생성 스타일
-    style = st.selectbox(
-        "생성 스타일",
-        options=["자연스러운", "상업적", "아티스틱", "미니멀"],
-        index=0,
-        help="이미지의 전체적인 스타일을 선택해주세요.",
-        key="background_style"
-    )
-    
-    return {
-        'custom_prompt': custom_prompt.strip() if custom_prompt else None,
-        'quality': quality,
-        'style': style
     }
 
 def show_generation_buttons(selected_user_images, selected_target_image, generation_options):
@@ -716,8 +666,8 @@ def show_generation_buttons(selected_user_images, selected_target_image, generat
                 
                 # 단일 API 호출용 합성 데이터
                 composition_data = {
-                    'user_images': selected_user_images,  # 다중 이미지를 배열로 전달
-                    'target_image': selected_target_image,
+                    'user_images': selected_user_images,
+                    'target_image': selected_target_image,  # 배경의 경우 카테고리 정보 포함
                     'generation_options': generation_options,
                     'product_data': st.session_state.processed_data
                 }
@@ -876,6 +826,16 @@ def display_combined_results_selection(results: List[Dict[str, Any]]):
     if not results:
         st.warning("표시할 결과가 없습니다.")
         return
+    
+    # 배경 이미지 합성인 경우 분석 결과 제외
+    composition_data = st.session_state.get('composition_data', {})
+    generation_type = composition_data.get('generation_options', {}).get('type', 'model')
+    
+    if generation_type == 'background':
+        # 배경 합성인 경우 분석 후보 이미지 제외
+        filtered_results = [r for r in results if r.get('result_type') != 'analysis_candidate']
+        results = filtered_results
+        logger.debug(f"🛠️ 배경 합성 - 분석 이미지 제외 후: {len(results)}개")
     
     # 원본 상품 개수 확인 (선택 가능한 최대 개수 결정)
     processed_data = st.session_state.get('processed_data', {})

@@ -41,6 +41,17 @@ async def lifespan(app: FastAPI):
         logger.debug("🛠️ InputHandler 초기화 시작")
         input_handler = InputHandler()
         logger.info("✅ InputHandler 초기화 완료")
+
+        # 6. 사용자 안내
+        logger.info("\n" + "=" * 60)
+        logger.info("🎉 모든 서비스가 성공적으로 시작되었습니다!")
+        logger.info("=" * 60)
+        logger.info("📱 Streamlit 앱: http://localhost:8501")
+        logger.info("🔧 FastAPI 문서: http://localhost:8010/docs")
+        logger.info("💡 상태 확인: http://localhost:8010/health")
+        logger.info("=" * 60)
+        logger.info("종료하려면 Ctrl+C를 누르세요.")
+        logger.info("=" * 60)
         
         # 초기화된 핸들러 정보
         if input_handler:
