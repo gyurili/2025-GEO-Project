@@ -212,23 +212,17 @@ def load_models_data():
                 
                 # 각 모델 폴더에서 이미지 파일들 찾기
                 model_images = []
-                mask_images = []
                 
-                for file in model_folder.iterdir():
+                for file in sorted(model_folder.iterdir()):
                     if file.is_file() and file.suffix.lower() in ['.jpg', '.jpeg', '.png', '.webp']:
-                        if 'mask' in file.name.lower():
-                            mask_images.append(str(file))
-                            logger.debug(f"🛠️ 마스크 이미지 발견: {file.name}")
-                        else:
-                            model_images.append(str(file))
-                            logger.debug(f"🛠️ 모델 이미지 발견: {file.name}")
+                        model_images.append(str(file))
+                        logger.debug(f"🛠️ 모델 이미지 발견: {file.name}")
                 
                 if model_images:  # 모델 이미지가 있는 경우만 추가
                     models_data[model_name] = {
-                        'model_images': model_images,
-                        'mask_images': mask_images
+                        'model_images': model_images
                     }
-                    logger.debug(f"🛠️ 모델 {model_name} 등록: 모델 이미지 {len(model_images)}개, 마스크 {len(mask_images)}개")
+                    logger.debug(f"🛠️ 모델 {model_name} 등록: 모델 이미지 {len(model_images)}개")
         
         logger.info(f"✅ 모델 데이터 로드 완료: {len(models_data)}개 모델")
         return models_data
@@ -415,7 +409,6 @@ def display_model_selection(models_data: Dict):
     
     model_info = models_data[selected_model_name]
     model_images = model_info['model_images']
-    mask_images = model_info['mask_images']
     
     # 모델 이미지 선택
     st.write("**모델 이미지 선택:**")
@@ -461,56 +454,7 @@ def display_model_selection(models_data: Dict):
     if not (selected_model_image and selected_model_image['model_name'] == selected_model_name):
         selected_model_image = None
     
-    # 마스크 이미지 선택 (모델 이미지가 선택된 경우에만)
-    selected_mask_image = None
-    if selected_model_image and mask_images:
-        st.write("**마스크 이미지 선택:**")
-        
-        # 마스크 이미지들을 그리드로 표시
-        cols = st.columns(min(3, len(mask_images)))
-        
-        for i, mask_image_path in enumerate(mask_images):
-            col_idx = i % len(cols)
-            with cols[col_idx]:
-                if os.path.exists(mask_image_path):
-                    # 선택된 마스크 이미지인지 확인
-                    current_selected_mask = st.session_state.get('selected_mask_image')
-                    is_selected = (current_selected_mask and 
-                                current_selected_mask['model_name'] == selected_model_name and 
-                                current_selected_mask['index'] == i)
-                    
-                    if is_selected:
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    
-                    st.image(mask_image_path, caption=f"마스크 {i+1}", width=200)
-                    
-                    if is_selected:
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    
-                    if st.button("선택", 
-                                key=f"select_mask_{selected_model_name}_{i}",
-                                type="primary" if is_selected else "secondary"):
-                        st.session_state.selected_mask_image = {
-                            'path': mask_image_path,
-                            'index': i,
-                            'model_name': selected_model_name
-                        }
-                        logger.debug(f"🛠️ 마스크 이미지 선택: {mask_image_path}")
-                        st.rerun()
-                else:
-                    st.error(f"마스크를 찾을 수 없습니다: {mask_image_path}")
-        
-        # 선택된 마스크 이미지 표시
-        selected_mask_image = st.session_state.get('selected_mask_image')
-        if selected_mask_image and selected_mask_image['model_name'] == selected_model_name:
-            st.success(f"✅ 선택된 마스크: 마스크 {selected_mask_image['index'] + 1}")
-        else:
-            selected_mask_image = None
-    
-    elif selected_model_image and not mask_images:
-        st.info("💡 이 모델에는 마스크 이미지가 없습니다.")
-    
-    return selected_model_image, selected_mask_image
+    return selected_model_image
 
 def display_generation_options():
     """이미지 생성 요청사항 입력"""
@@ -526,26 +470,8 @@ def display_generation_options():
         help="이미지 생성 시 추가로 반영하고 싶은 요청사항을 입력해주세요."
     )
     
-    # 생성 품질 설정
-    quality = st.selectbox(
-        "생성 품질",
-        options=["표준", "고품질", "최고품질"],
-        index=1,
-        help="이미지 생성 품질을 선택해주세요. 품질이 높을수록 처리 시간이 길어집니다."
-    )
-    
-    # 생성 스타일
-    style = st.selectbox(
-        "생성 스타일",
-        options=["자연스러운", "상업적", "아티스틱", "미니멀"],
-        index=0,
-        help="이미지의 전체적인 스타일을 선택해주세요."
-    )
-    
     return {
-        'custom_prompt': custom_prompt.strip() if custom_prompt else None,
-        'quality': quality,
-        'style': style
+        'custom_prompt': custom_prompt.strip() if custom_prompt else None
     }
 
 def show_model_generation_tab():
@@ -564,7 +490,7 @@ def show_model_generation_tab():
     
     with col2:
         # 2단계: 모델 선택
-        selected_model_image, selected_mask_image = display_model_selection(models_data)
+        selected_model_image = display_model_selection(models_data)
     
     st.markdown("---")
     
@@ -583,7 +509,7 @@ def show_model_generation_tab():
     }
     
     # 합성 버튼
-    show_generation_buttons(selected_user_images, selected_model_image, selected_mask_image, generation_options)
+    show_generation_buttons(selected_user_images, selected_model_image, generation_options)
 
 def show_background_generation_tab():
     logger.debug("🛠️ 배경 이미지 생성 탭 표시 (카테고리 기반)")
@@ -602,16 +528,25 @@ def show_background_generation_tab():
 
     st.markdown("---")
 
-    # 품질/스타일 옵션(선택)
-    generation_options = display_generation_options_full()
-    generation_options['type'] = 'background'
-    # 🟦 카테고리 기반 프롬프트 사용
-    generation_options['category'] = selected_category_info['category']
-    generation_options['subcategory'] = selected_category_info['subcategory']
-    generation_options['custom_prompt'] = selected_category_info['prompt']  # 기존 커스텀 대신
+    # 사용자 요청사항만 입력받기
+    custom_prompt = st.text_area(
+        "추가 요청사항 (선택사항)",
+        placeholder="예: 더 밝은 조명, 상품을 중앙에 배치, 고급스러운 분위기",
+        height=100,
+        help="선택한 배경에 추가로 반영하고 싶은 요청사항을 입력해주세요.",
+        key="background_custom_prompt"
+    )
+
+    generation_options = {
+        'type': 'background',
+        'category': selected_category_info['category'],
+        'subcategory': selected_category_info['subcategory'],
+        'base_prompt': selected_category_info['prompt'],  # JSON의 기본 프롬프트
+        'custom_prompt': custom_prompt.strip() if custom_prompt else None
+    }
 
     # 합성 버튼
-    show_generation_buttons(selected_user_images, selected_category_info, None, generation_options)
+    show_generation_buttons(selected_user_images, selected_category_info, generation_options)
 
 def display_background_category_ui(backgrounds_json):
     st.subheader("🗂️ 배경 카테고리/소분류 선택")
@@ -646,48 +581,7 @@ def display_background_category_ui(backgrounds_json):
         "example_image": example_image
     }
 
-
-
-def display_generation_options_full():
-    """전체 이미지 생성 옵션 (배경 생성용)"""
-    logger.debug("🛠️ 전체 이미지 생성 옵션 표시 시작")
-    
-    st.subheader("⚙️ 이미지 생성 옵션")
-    
-    # 생성 요청사항 (선택사항)
-    custom_prompt = st.text_area(
-        "생성 요청사항 (선택사항)",
-        placeholder="예: 밝은 배경, 자연스러운 조명, 고품질 사진",
-        height=100,
-        help="이미지 생성 시 추가로 반영하고 싶은 요청사항을 입력해주세요.",
-        key="background_prompt"
-    )
-    
-    # 생성 품질 설정
-    quality = st.selectbox(
-        "생성 품질",
-        options=["표준", "고품질", "최고품질"],
-        index=1,
-        help="이미지 생성 품질을 선택해주세요. 품질이 높을수록 처리 시간이 길어집니다.",
-        key="background_quality"
-    )
-    
-    # 생성 스타일
-    style = st.selectbox(
-        "생성 스타일",
-        options=["자연스러운", "상업적", "아티스틱", "미니멀"],
-        index=0,
-        help="이미지의 전체적인 스타일을 선택해주세요.",
-        key="background_style"
-    )
-    
-    return {
-        'custom_prompt': custom_prompt.strip() if custom_prompt else None,
-        'quality': quality,
-        'style': style
-    }
-
-def show_generation_buttons(selected_user_images, selected_target_image, selected_mask_image, generation_options):
+def show_generation_buttons(selected_user_images, selected_target_image, generation_options):
     """합성 실행 버튼 표시 (다중 상품 이미지 → 단일 결과)"""
     logger.debug("🛠️ 합성 버튼 표시")
     
@@ -772,9 +666,8 @@ def show_generation_buttons(selected_user_images, selected_target_image, selecte
                 
                 # 단일 API 호출용 합성 데이터
                 composition_data = {
-                    'user_images': selected_user_images,  # 다중 이미지를 배열로 전달
-                    'target_image': selected_target_image,
-                    'mask_image': selected_mask_image,
+                    'user_images': selected_user_images,
+                    'target_image': selected_target_image,  # 배경의 경우 카테고리 정보 포함
                     'generation_options': generation_options,
                     'product_data': st.session_state.processed_data
                 }
@@ -885,10 +778,6 @@ def display_result_selection(result: Dict[str, Any]):
         with col2:
             st.image(str(result_image_path), caption="합성 결과", width=500)
         
-        # 결과 정보
-        st.write(f"**생성 타입:** {result['generation_type']}")
-        st.write(f"**사용된 이미지 수:** {result['input_images']}개")
-        
         # 사용된 프롬프트 표시
         with st.expander("🔍 사용된 프롬프트 보기"):
             st.code(result['prompt_used'])
@@ -938,29 +827,22 @@ def display_combined_results_selection(results: List[Dict[str, Any]]):
         st.warning("표시할 결과가 없습니다.")
         return
     
+    # 배경 이미지 합성인 경우 분석 결과 제외
+    composition_data = st.session_state.get('composition_data', {})
+    generation_type = composition_data.get('generation_options', {}).get('type', 'model')
+    
+    if generation_type == 'background':
+        # 배경 합성인 경우 분석 후보 이미지 제외
+        filtered_results = [r for r in results if r.get('result_type') != 'analysis_candidate']
+        results = filtered_results
+        logger.debug(f"🛠️ 배경 합성 - 분석 이미지 제외 후: {len(results)}개")
+    
     # 원본 상품 개수 확인 (선택 가능한 최대 개수 결정)
     processed_data = st.session_state.get('processed_data', {})
     original_product_count = len(processed_data.get('image_path_list', []))
     max_selections = min(original_product_count, len(results))  # 원본 상품 수 또는 전체 결과 수 중 작은 값
     
     logger.debug(f"🛠️ 원본 상품 수: {original_product_count}, 최대 선택 가능: {max_selections}")
-    
-    # 모든 결과 타입 확인
-    logger.debug("🛠️ 모든 결과 항목 확인:")
-    for i, result in enumerate(results):
-        logger.debug(f"  결과 {i}: result_type={result.get('result_type')}, title={result.get('title')}, path={result.get('result_image_path')}")
-    
-    # 결과를 타입별로 분류
-    composition_results = [r for r in results if r.get('result_type') == 'composition']
-    analysis_results = [r for r in results if r.get('result_type') == 'analysis_candidate']
-    
-    logger.debug(f"🛠️ 분류 결과: 합성 {len(composition_results)}개, 분석 후보 {len(analysis_results)}개")
-    
-    st.write(f"**총 생성된 결과: {len(results)}개**")
-    if composition_results:
-        st.write(f"  📦 합성 결과: {len(composition_results)}개")
-    if analysis_results:
-        st.write(f"  🤖 AI 분석 후보: {len(analysis_results)}개")
     
     # 다중 선택 안내
     if max_selections > 1:
@@ -975,55 +857,83 @@ def display_combined_results_selection(results: List[Dict[str, Any]]):
     
     project_root = Path(__file__).parent.parent.parent
     
-    # 전체 선택/해제 버튼 (최대 선택 수 제한)
-    col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+    selected_count = len(st.session_state[selected_key])
+    st.write(f"**선택: {selected_count}/{max_selections}**")
     
-    with col1:
-        if st.button("🔘 전체 선택", key="select_all_combined"):
-            # 최대 선택 수만큼만 선택
-            all_paths = [r['result_image_path'] for r in results]
-            st.session_state[selected_key] = all_paths[:max_selections]
-            st.rerun()
-    
-    with col2:
-        if st.button("⭕ 전체 해제", key="deselect_all_combined"):
-            st.session_state[selected_key] = []
-            st.rerun()
-    
-    with col3:
-        selected_count = len(st.session_state[selected_key])
-        st.write(f"**선택: {selected_count}/{max_selections}**")
-    
-    # 합성 결과 먼저 표시
-    if composition_results:
-        st.subheader("📦 합성 결과")
-        display_result_grid_multi_select(composition_results, project_root, selected_key, "comp", max_selections)
-    
-    # AI 분석 후보 이미지 표시
-    if analysis_results:
-        st.subheader("🤖 AI 분석 후보 이미지")
-        display_result_grid_multi_select(analysis_results, project_root, selected_key, "analysis", max_selections)
+    # 모든 결과를 함께 표시 (타입 구분 없이)
+    display_result_grid_multi_select_two_columns(results, project_root, selected_key, "all", max_selections)
     
     # 선택된 결과 요약 표시
     selected_paths = st.session_state[selected_key]
     if selected_paths:
         st.success(f"✅ 선택된 이미지: {len(selected_paths)}개")
-        
-        # 선택된 이미지들의 정보 표시
-        with st.expander("🔍 선택된 이미지 정보"):
-            for i, path in enumerate(selected_paths, 1):
-                selected_result = next(
-                    (r for r in results if r['result_image_path'] == path), 
-                    None
-                )
-                if selected_result:
-                    st.write(f"**{i}. {selected_result.get('title', '알 수 없는 이미지')}**")
-                    st.write(f"   타입: {selected_result.get('generation_type', 'N/A')}")
-                    if selected_result.get('result_type') == 'composition':
-                        st.write(f"   사용된 상품 이미지: {selected_result.get('input_images', 'N/A')}개")
     
     # 상세페이지 생성 버튼
     display_detail_page_generation_button_with_multi_selection(max_selections)
+
+def display_result_grid_multi_select_two_columns(results: List[Dict[str, Any]], project_root: Path, selected_key: str, key_prefix: str, max_selections: int):
+    """결과 그리드 표시 (다중 선택 지원, 한 줄에 2개씩)"""
+    logger.debug(f"🛠️ display_result_grid_multi_select_two_columns 호출: {len(results)}개 결과, key_prefix={key_prefix}, 최대 선택={max_selections}")
+    
+    cols_per_row = 2  # 한 줄에 2개씩
+    for i in range(0, len(results), cols_per_row):
+        cols = st.columns(cols_per_row)
+        
+        for j, result in enumerate(results[i:i+cols_per_row]):
+            result_idx = i + j
+            with cols[j]:
+                relative_path = result['result_image_path']
+                result_image_path = project_root / relative_path
+                
+                logger.debug(f"🛠️ 이미지 {result_idx}: {result.get('title', 'N/A')}")
+                logger.debug(f"🛠️ 상대 경로: {relative_path}")
+                logger.debug(f"🛠️ 절대 경로: {result_image_path}")
+                logger.debug(f"🛠️ 파일 존재: {result_image_path.exists()}")
+                
+                if result_image_path.exists():
+                    # 선택된 이미지인지 확인
+                    selected_paths = st.session_state[selected_key]
+                    is_selected = result['result_image_path'] in selected_paths
+                    
+                    # 이미지 표시 - 컨테이너 너비에 맞춰서 표시 (버튼과 같은 크기)
+                    st.image(str(result_image_path), caption=result.get('title', f'결과 {result_idx + 1}'), use_container_width=True)
+                    logger.debug(f"✅ 이미지 표시 성공: {result.get('title', 'N/A')}")
+                    
+                    # 선택 상태에 따른 스타일링
+                    if is_selected:
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    # 개별 선택/해제 버튼 - 컨테이너 너비에 맞춤
+                    button_disabled = False
+                    button_text = "✅ 선택됨" if is_selected else "⭕ 선택"
+                    button_type = "primary" if is_selected else "secondary"
+                    
+                    # 최대 선택 수 도달 시 선택 버튼 비활성화 (이미 선택된 것은 제외)
+                    if not is_selected and len(selected_paths) >= max_selections:
+                        button_disabled = True
+                        button_text = f"⭕ 선택 (최대 {max_selections}개)"
+                        button_type = "secondary"
+                    
+                    if st.button(
+                        button_text,
+                        key=f"select_{key_prefix}_{result_idx}",
+                        type=button_type,
+                        use_container_width=True,  # 컨테이너 너비에 맞춤
+                        disabled=button_disabled
+                    ):
+                        if is_selected:
+                            # 선택 해제
+                            st.session_state[selected_key].remove(result['result_image_path'])
+                        else:
+                            # 선택 추가 (최대 개수 확인)
+                            if len(selected_paths) < max_selections:
+                                st.session_state[selected_key].append(result['result_image_path'])
+                        
+                        logger.debug(f"🛠️ 선택 상태 변경: {result['result_image_path']}")
+                        st.rerun()
+                else:
+                    logger.error(f"❌ 이미지 파일이 존재하지 않음: {result_image_path}")
+                    st.error(f"이미지를 찾을 수 없습니다: {relative_path}")
 
 def display_result_grid_multi_select(results: List[Dict[str, Any]], project_root: Path, selected_key: str, key_prefix: str, max_selections: int):
     """결과 그리드 표시 (다중 선택 지원)"""
@@ -1050,7 +960,7 @@ def display_result_grid_multi_select(results: List[Dict[str, Any]], project_root
                     is_selected = result['result_image_path'] in selected_paths
                     
                     # 이미지 표시
-                    st.image(str(result_image_path), caption=result.get('title', f'결과 {result_idx + 1}'), width=250)
+                    st.image(str(result_image_path), caption=result.get('title', f'결과 {result_idx + 1}'), use_container_width=True)
                     logger.debug(f"✅ 이미지 표시 성공: {result.get('title', 'N/A')}")
                     
                     # 선택 상태에 따른 스타일링
@@ -1085,11 +995,6 @@ def display_result_grid_multi_select(results: List[Dict[str, Any]], project_root
                         
                         logger.debug(f"🛠️ 선택 상태 변경: {result['result_image_path']}")
                         st.rerun()
-                    
-                    # 결과 정보 요약
-                    st.caption(f"타입: {result.get('generation_type', 'N/A')}")
-                    if result.get('result_type') == 'composition':
-                        st.caption(f"이미지: {result.get('input_images', 'N/A')}개")
                 else:
                     logger.error(f"❌ 이미지 파일이 존재하지 않음: {result_image_path}")
                     st.error(f"이미지를 찾을 수 없습니다: {relative_path}")
@@ -1251,11 +1156,6 @@ def display_result_grid(results: List[Dict[str, Any]], project_root: Path, selec
                         else:
                             st.session_state[selected_key] = result['result_image_path']
                         st.rerun()
-                    
-                    # 결과 정보 요약
-                    st.caption(f"타입: {result.get('generation_type', 'N/A')}")
-                    if result.get('result_type') == 'composition':
-                        st.caption(f"이미지: {result.get('input_images', 'N/A')}개")
                 else:
                     logger.error(f"❌ 이미지 파일이 존재하지 않음: {result_image_path}")
                     st.error(f"이미지를 찾을 수 없습니다: {relative_path}")
@@ -1329,10 +1229,6 @@ def display_multiple_results_selection(results: List[Dict[str, Any]]):
                         else:
                             st.session_state[selected_key] = result['result_image_path']
                         st.rerun()
-                    
-                    # 결과 정보 요약
-                    st.caption(f"타입: {result['generation_type']}")
-                    st.caption(f"이미지: {result['input_images']}개")
                 else:
                     st.error(f"결과 {result_idx + 1} 이미지를 찾을 수 없습니다.")
     
@@ -1593,7 +1489,6 @@ def main():
         selected_user_model = st.session_state.get('selected_user_images_model', [])
         selected_user_background = st.session_state.get('selected_user_images_background', [])
         selected_model = st.session_state.get('selected_model_image')
-        selected_mask = st.session_state.get('selected_mask_image')
         selected_bg = st.session_state.get('selected_background')
         
         # 사용자 이미지 (탭별로 다른 키 확인)
@@ -1616,18 +1511,12 @@ def main():
         else:
             st.info("ℹ️ 배경 이미지 미선택")
         
-        # 마스크 이미지
-        if selected_mask:
-            st.success("✅ 마스크 이미지 선택됨")
-        else:
-            st.info("ℹ️ 마스크 이미지 선택사항")
-        
         st.markdown("---")
         
         # 초기화 버튼
         if st.button("🔄 선택 초기화", use_container_width=True):
             logger.debug("🛠️ 선택 초기화 버튼 클릭")
-            keys_to_remove = ['selected_user_image', 'selected_model_image', 'selected_mask_image', 'selected_background']
+            keys_to_remove = ['selected_user_image', 'selected_model_image', 'selected_background']
             for key in keys_to_remove:
                 if key in st.session_state:
                     del st.session_state[key]

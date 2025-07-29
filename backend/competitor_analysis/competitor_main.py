@@ -94,8 +94,7 @@ if __name__ == "__main__":
         "price": 189000,
         "brand": "쿠쿠",
         "features": "IH 가열, 6인용, 분리형 커버, 예약취사, 고압모드 지원",
-        "image_path": "",
-        "css_type": 1
+        "image_path": ""
     }
 
     # competitor_main은 async 함수이므로 asyncio.run으로 호출!

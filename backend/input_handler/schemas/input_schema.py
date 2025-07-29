@@ -40,11 +40,6 @@ class ProductInputSchema(BaseModel):
         description="상품 특징 (필수)"
     )
     
-    css_type: int = Field(
-        ...,
-        description="CSS 타입 (필수, 1 또는 2)"
-    )
-    
     image_path_list: Optional[List[str]] = Field(
         default=None,
         description="이미지 경로 리스트 (선택사항)"
@@ -88,14 +83,6 @@ class ProductInputSchema(BaseModel):
         
         return v.strip()
     
-    @validator('css_type')
-    def validate_css_type(cls, v):
-        """CSS 타입 검증"""
-        if v not in [1, 2]:
-            raise ValueError('CSS 타입은 1 또는 2만 선택 가능합니다.')
-        
-        return v
-    
     @validator('image_path_list')
     def validate_image_path_list(cls, v):
         """이미지 경로 리스트 검증 (선택사항)"""
@@ -127,7 +114,6 @@ class ProductInputSchema(BaseModel):
                 "price": 29900,
                 "brand": "우일",
                 "features": "인견 소재, 우수한 흡수성과 통기성, 부드러운 촉감",
-                "css_type": 1,
                 "image_path": [
                     "backend/data/input/product_abc123.jpg",
                     "backend/data/input/product_def456.jpg"
@@ -142,6 +128,5 @@ class ProductInputSchema(BaseModel):
             "price": {"title": "가격"},
             "brand": {"title": "브랜드"},
             "features": {"title": "상품 특징"},
-            "css_type": {"title": "CSS 타입"},
             "image_path": {"title": "이미지 경로"}
         }

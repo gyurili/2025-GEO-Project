@@ -34,59 +34,6 @@ def load_result_data() -> Optional[Dict[str, Any]]:
     logger.warning("⚠️ 결과 데이터가 없음")
     return None
 
-def display_result_summary(result_data: Dict[str, Any]):
-    """결과 요약 정보 표시"""
-    logger.debug("🛠️ 결과 요약 표시 시작")
-    
-    st.subheader("📊 상세페이지 생성 결과")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric(
-            label="생성 타입",
-            value="상세페이지"
-        )
-    
-    with col2:
-        # 이미지 개수 (image_path_list에서)
-        image_count = len(result_data.get('image_path_list', []))
-        st.metric(
-            label="포함된 이미지",
-            value=f"{image_count}개"
-        )
-    
-    with col3:
-        # 차별점 개수
-        differences_count = len(result_data.get('difference', []))
-        st.metric(
-            label="반영된 차별점",
-            value=f"{differences_count}개"
-        )
-    
-    with col4:
-        # session_id 기반 생성 시간 추출 또는 현재 시간
-        session_id = result_data.get('session_id', '')
-        if session_id and len(session_id) >= 15:  # page_YYYYMMDD_HHMMSS_sss 형식
-            try:
-                date_part = session_id.split('_')[1]  # YYYYMMDD
-                time_part = session_id.split('_')[2]  # HHMMSS
-                formatted_time = f"{date_part[:4]}-{date_part[4:6]}-{date_part[6:8]} {time_part[:2]}:{time_part[2:4]}"
-                st.metric(
-                    label="생성 시간",
-                    value=formatted_time
-                )
-            except:
-                st.metric(
-                    label="생성 시간",
-                    value=datetime.now().strftime("%Y-%m-%d %H:%M")
-                )
-        else:
-            st.metric(
-                label="생성 시간",
-                value=datetime.now().strftime("%Y-%m-%d %H:%M")
-            )
-
 def display_result_image(result_data: Dict[str, Any]):
     """결과 이미지 표시"""
     logger.debug("🛠️ 결과 이미지 표시 시작")
@@ -424,7 +371,6 @@ def display_generation_details(result_data: Dict[str, Any]):
             st.write(f"- 생성 타입: 상세페이지")
             st.write(f"- 포함된 이미지: {len(result_data.get('image_path_list', []))}개")
             st.write(f"- 반영된 차별점: {len(result_data.get('difference', []))}개")
-            st.write(f"- CSS 타입: {result_data.get('css_type', 'N/A')}")
         
         with col2:
             st.write("**기술 정보:**")
@@ -477,11 +423,6 @@ def main():
         
         return
     
-    # 결과 요약 표시
-    display_result_summary(result_data)
-    
-    st.markdown("---")
-    
     # 결과 이미지 표시 (전체 너비)
     image_path = display_result_image(result_data)
     
@@ -519,7 +460,7 @@ def main():
     st.markdown("---")
     
     # 생성 상세 정보
-    display_generation_details(result_data)
+    # display_generation_details(result_data)
     
     # 네비게이션 버튼
     st.markdown("---")
@@ -539,7 +480,7 @@ def main():
             keys_to_clear = [
                 'processed_data', 'composition_result', 'composition_data', 'detail_page_result',
                 'selected_user_images_model', 'selected_user_images_background',
-                'selected_model_image', 'selected_mask_image', 'selected_background',
+                'selected_model_image', 'selected_background',
                 'analysis_result', 'analysis_started', 'combined_results'
             ]
             for key in keys_to_clear:
