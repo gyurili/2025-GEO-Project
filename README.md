@@ -139,12 +139,20 @@ set PYTHONPATH=c:/2025-GEO-Project
 **1. 크롤러(local_run.py) 실행 (VPN/프록시 적용 후)**
 
 ```bash
-python backend/competitor_analysis/core/local_run.py
+python backend/competitor_analysis/local_run.py
 ```
 
 - 리뷰 크롤링 → 요약 → DB 저장 (백그라운드 실행 필요)
 
-**2. 메인 애플리케이션 실행(run.py)**
+**2. 제공된 seed(init_seed_categories.py) 실행 (선택)**
+
+```bash
+python backemd/competitor_analysis/init_seed_categories.py
+```
+
+- initial_categories.json 내부의 카테고리들을 크롤링 하도록 실행
+
+**3. 메인 애플리케이션 실행(run.py)**
 
 ```bash
 python run.py
