@@ -139,12 +139,20 @@ set PYTHONPATH=c:/2025-GEO-Project
 **1. 크롤러(local_run.py) 실행 (VPN/프록시 적용 후)**
 
 ```bash
-python backend/competitor_analysis/core/local_run.py
+python backend/competitor_analysis/local_run.py
 ```
 
 - 리뷰 크롤링 → 요약 → DB 저장 (백그라운드 실행 필요)
 
-**2. 메인 애플리케이션 실행(run.py)**
+**2. 제공된 seed(init_seed_categories.py) 실행 (선택)**
+
+```bash
+python backemd/competitor_analysis/init_seed_categories.py
+```
+
+- initial_categories.json 내부의 카테고리들을 크롤링 하도록 실행
+
+**3. 메인 애플리케이션 실행(run.py)**
 
 ```bash
 python run.py
@@ -235,7 +243,7 @@ geopage/
 
 ---
 
-- 📘 **최종 보고서**: [다운로드](https://drive.google.com/file/d/1hW6I3pQv1s-bpWh30OJhhI47VSNig9Uv/view?usp=sharing)
+- 📘 **최종 보고서**: [다운로드](https://drive.google.com/file/d/1Nj7hDIIebIwU39wSdIEJab0QzZFO3Ha9/view?usp=sharing)
 - 📽️ **발표자료 (PPT)**: [확인하기](https://www.canva.com/design/DAGuCSTvzSM/Hbghlmvl8-dPgXEr2vlF3Q/edit?utm_content=DAGuCSTvzSM&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
 
 - 🗂️ **팀원별 협업 일지**
