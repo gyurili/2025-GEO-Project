@@ -61,12 +61,6 @@ def validate_form_data(form_data: Dict[str, Any], uploaded_files=None) -> Dict[s
         errors['features'] = "상품 특징을 입력해주세요."
         logger.debug("🛠️ 상품 특징 검증 실패")
     
-    # CSS 타입 검증 (필수)
-    css_type = form_data.get('css_type')
-    if css_type not in [1, 2]:
-        errors['css_type'] = "CSS 타입을 선택해주세요. (1 또는 2)"
-        logger.debug("🛠️ CSS 타입 검증 실패")
-    
     try:
         price = int(form_data.get('price', 0))
         if price <= 0:
@@ -204,7 +198,6 @@ def display_product_summary(product_data: Dict[str, Any]):
     
     with col2:
         st.write(f"**특징:** {product_data['features']}")
-        st.write(f"**CSS 타입:** {product_data['css_type']}")
         if product_data.get('image_path_list'):
             st.write(f"**이미지:** {len(product_data['image_path_list'])}개")
             for i, img_path in enumerate(product_data['image_path_list']):
@@ -275,15 +268,7 @@ def main():
             if 'validation_errors' in st.session_state and 'category' in st.session_state.validation_errors:
                 st.error(f"❌ {st.session_state.validation_errors['category']}")
             
-            brand = st.text_input(
-                "브랜드명 *",
-                placeholder="예: 우일",
-                value="롤프",
-                help="상품의 브랜드명을 입력해주세요." 
-            )
-            # 브랜드 오류 표시
-            if 'validation_errors' in st.session_state and 'brand' in st.session_state.validation_errors:
-                st.error(f"❌ {st.session_state.validation_errors['brand']}")
+            
         
         with col2:
             price = st.number_input(
@@ -294,16 +279,21 @@ def main():
                 step=1000,
                 help="상품의 가격을 입력해주세요."
             )
-            # CSS 타입 오류 표시
-            if 'validation_errors' in st.session_state and 'css_type' in st.session_state.validation_errors:
-                st.error(f"❌ {st.session_state.validation_errors['css_type']}")
-            
-            css_type = st.selectbox(
-                "CSS 타입 *",
-                options=[1, 2],
-                index=0,
-                help="사용할 CSS 스타일 타입을 선택해주세요."
+
+            # 브랜드 오류 표시
+            if 'validation_errors' in st.session_state and 'price' in st.session_state.validation_errors:
+                st.error(f"❌ {st.session_state.validation_errors['price']}")
+
+            brand = st.text_input(
+                "브랜드명 *",
+                placeholder="예: 우일",
+                value="롤프",
+                help="상품의 브랜드명을 입력해주세요." 
             )
+            # 브랜드 오류 표시
+            if 'validation_errors' in st.session_state and 'brand' in st.session_state.validation_errors:
+                st.error(f"❌ {st.session_state.validation_errors['brand']}")
+
         
         st.subheader("📋 상품 상세 정보")
         
@@ -365,8 +355,7 @@ def main():
             "category": category,
             "price": price,
             "brand": brand,
-            "features": features,
-            "css_type": css_type
+            "features": features
         }
         
         logger.debug(f"🛠️ 폼 데이터 구성 완료: {list(form_data.keys())}")
@@ -428,7 +417,6 @@ def main():
         - 브랜드명
         - 가격
         - 상품 특징
-        - CSS 타입
         - 이미지
         """)
         

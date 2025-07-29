@@ -238,18 +238,6 @@ def main():
     time.sleep(2)
     check_server_health()
     
-    # 6. 사용자 안내
-    logger.info("\n" + "=" * 60)
-    logger.info("🎉 모든 서비스가 성공적으로 시작되었습니다!")
-    logger.info("=" * 60)
-    logger.info("📱 Streamlit 앱: http://localhost:8501")
-    logger.info("🔧 FastAPI 문서: http://localhost:8010/docs")
-    logger.info("💡 상태 확인: http://localhost:8010/health")
-    logger.info("=" * 60)
-    logger.info("종료하려면 Ctrl+C를 누르세요.")
-    logger.info("=" * 60)
-    
-    # 7. 무한 대기
     try:
         while True:
             time.sleep(1)

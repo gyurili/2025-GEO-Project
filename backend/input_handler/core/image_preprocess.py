@@ -271,39 +271,6 @@ class ImagePreprocessor:
             logger.error(f"❌ 이미지 처리 중 오류 발생: {e}")
             return None
     
-    def copy_existing_image(self, source_path: str, output_dir: str) -> Optional[str]:
-        """기존 이미지 복사 및 전처리"""
-        logger.debug(f"🛠️ 기존 이미지 복사 및 전처리 시작: {source_path}")
-        
-        try:
-            # 이미지 유효성 검증
-            logger.debug("🛠️ 기존 이미지 유효성 검증 시작")
-            if not self.validate_image(source_path):
-                logger.warning("⚠️ 기존 이미지 유효성 검증 실패")
-                return None
-            
-            # 출력 디렉토리 생성
-            os.makedirs(output_dir, exist_ok=True)
-            logger.debug(f"🛠️ 출력 디렉토리 생성 완료: {output_dir}")
-            
-            # 최종 파일명 생성
-            final_filename = f"product_{uuid.uuid4().hex}.jpg"
-            final_path = os.path.join(output_dir, final_filename)
-            logger.debug(f"🛠️ 최종 파일 경로: {final_path}")
-            
-            # 이미지 리사이징 및 최적화
-            logger.debug("🛠️ 기존 이미지 리사이징 및 최적화 시작")
-            if self.resize_image(source_path, final_path):
-                logger.info(f"✅ 기존 이미지 복사 및 전처리 완료: {os.path.basename(final_path)}")
-                return final_path
-            else:
-                logger.warning("⚠️ 기존 이미지 리사이징 실패")
-                return None
-                
-        except Exception as e:
-            logger.error(f"❌ 이미지 복사 중 오류 발생: {e}")
-            return None
-    
     def process_multiple_images(self, uploaded_files, output_dir: str) -> List[str]:
         """여러 업로드된 이미지 전처리 (Streamlit 또는 FastAPI UploadFile 모두 지원)"""
         logger.debug(f"🛠️ 다중 이미지 처리 시작: {len(uploaded_files)}개 파일")
