@@ -1,0 +1,128 @@
+{
+  "실내배경": {
+    "미니멀 스칸디나비안 거실(깨끗하고 세련된 공간)": {
+      "prompt": "minimalist Scandinavian living room with white walls, natural light, wooden floor, clean lines, soft neutral tones, contemporary furniture, architectural details",
+      "example_image": "backend/data/backgrounds/examples/indoor/미니멀 스칸디나비안 거실(깨끗하고 세련된 공간).png"
+    },
+    "모던 미드센츄리 인테리어(클래식한 모던 디자인)": {
+      "prompt": "modern mid-century interior with elegant furniture, warm wood tones, geometric patterns, statement lighting, architectural details, period-accurate styling",
+      "example_image": "backend/data/backgrounds/examples/indoor/모던 미드센츄리 인테리어(클래식한 모던 디자인).png"
+    },
+    "아늑한 스튜디오 책상(작업에 최적화된 공간)": {
+      "prompt": "cozy studio desk setup with natural light, minimalist workspace, organized stationery, indoor plants, warm ambient lighting, creative professional atmosphere",
+      "example_image": "backend/data/backgrounds/examples/indoor/아늑한 스튜디오 책상(작업에 최적화된 공간).png"
+    },
+    "북유럽식 침실 인테리어(따뜻하고 편안한 공간)": {
+      "prompt": "Nordic bedroom interior with comfortable bedding, soft textiles, minimalist decor, gentle morning light, hygge atmosphere, peaceful residential environment",
+      "example_image": "backend/data/backgrounds/examples/indoor/북유럽식 침실 인테리어(따뜻하고 편안한 공간).png"
+    },
+    "모던 홈 오피스(효율적인 작업 공간)": {
+      "prompt": "modern home office with ergonomic furniture, technology integration, organized workspace, productive environment, contemporary design, functional storage solutions",
+      "example_image": "backend/data/backgrounds/examples/indoor/모던 홈 오피스(효율적인 작업 공간).png"
+    }
+  },
+  "자연배경": {
+    "바다 해안선(평화로운 해변 풍경)": {
+      "prompt": "ocean shoreline with gentle waves, clear turquoise water, soft white sand, golden hour lighting, peaceful coastal atmosphere, natural sea elements",
+      "example_image": "backend/data/backgrounds/examples/nature/바다 해안선(평화로운 해변 풍경).jpg"
+    },
+    "깨끗한 설원(순백의 겨울 풍경)": {
+      "prompt": "pristine snow landscape with untouched powder snow, soft blue shadows, crisp winter atmosphere, bright reflective surface, mountain backdrop",
+      "example_image": "backend/data/backgrounds/examples/nature/깨끗한 설원(순백의 겨울 풍경).jpg"
+    },
+    "열대 해변(이국적인 천국)": {
+      "prompt": "tropical beach with crystal clear water, white sand, gentle palm shadows, bright sunlight, vibrant coastal colors, exotic paradise setting",
+      "example_image": "backend/data/backgrounds/examples/nature/열대 해변(이국적인 천국).jpg"
+    },
+    "고산 정상(장엄한 산맥)": {
+      "prompt": "majestic mountain summit with dramatic peaks, vast landscape views, crisp air atmosphere, natural stone formations, early morning light",
+      "example_image": "backend/data/backgrounds/examples/nature/고산 정상(장엄한 산맥).jpg"
+    },
+    "봄 꽃밭(생동감 넘치는 꽃의 향연)": {
+      "prompt": "spring flower meadow with colorful blooms, soft natural bokeh, gentle breeze movement, warm sunlight, vibrant petal colors, natural garden setting",
+      "example_image": "backend/data/backgrounds/examples/nature/봄 꽃밭(생동감 넘치는 꽃의 향연).jpg"
+    },
+    "폭포 주변(자연의 힘과 에너지)": {
+      "prompt": "waterfall environment with dynamic flowing water, splashing elements, mossy rocks, natural mist, powerful water energy",
+      "example_image": "backend/data/backgrounds/examples/nature/폭포 주변(자연의 힘과 에너지).jpg"
+    },
+    "계곡 바위(물에 다듬어진 자연의 조각)": {
+      "prompt": "river valley rocks with smooth water-polished stones, flowing stream, natural geological formations, filtered forest light",
+      "example_image": "backend/data/backgrounds/examples/nature/계곡 바위(물에 다듬어진 자연의 조각).jpg"
+    },
+    "밤하늘 별빛(우주의 신비)": {
+      "prompt": "night sky with brilliant stars, moonlight illumination, silhouetted landscape elements, cosmic atmosphere, natural darkness",
+      "example_image": "backend/data/backgrounds/examples/nature/밤하늘 별빛(우주의 신비).jpg"
+    },
+    "봄 벚꽃(섬세한 봄의 아름다움)": {
+      "prompt": "spring cherry blossom setting with delicate pink petals, soft focus background, gentle floral environment, seasonal beauty",
+      "example_image": "backend/data/backgrounds/examples/nature/봄 벚꽃(섬세한 봄의 아름다움).jpg"
+    }
+  },
+  "기본배경": {
+    "클래식 화이트(순수한 깨끗함)": {
+      "prompt": "clean white background with soft even lighting, subtle shadows, minimalist product presentation, professional commercial photography",
+      "example_image": "backend/data/backgrounds/examples/simple/클래식 화이트(순수한 깨끗함).jpg"
+    },
+    "소프트 그레이(부드러운 뉘앙스)": {
+      "prompt": "soft grey background with gentle gradient, minimal aesthetic, subtle shadows, clean product focus, professional product photography",
+      "example_image": "backend/data/backgrounds/examples/simple/소프트 그레이(부드러운 뉘앙스).jpg"
+    },
+    "딥 블랙(강렬한 대비)": {
+      "prompt": "deep black background with precision rim lighting, dramatic product emphasis, luxury product presentation, premium contrast, high-end commercial style",
+      "example_image": "backend/data/backgrounds/examples/simple/딥 블랙(강렬한 대비).jpg"
+    },
+    "파스텔 블루(차분한 파스텔)": {
+      "prompt": "pastel blue background with soft diffused lighting, gentle product shadows, clean minimal aesthetic, contemporary commercial photography",
+      "example_image": "backend/data/backgrounds/examples/simple/파스텔 블루(차분한 파스텔).jpg"
+    },
+    "파스텔 그라데이션(부드러운 색채)": {
+      "prompt": "soft pastel gradient background with gentle color transition, elegant product presentation, contemporary commercial aesthetic, harmonious color palette",
+      "example_image": "backend/data/backgrounds/examples/simple/파스텔 그라데이션(부드러운 색채).jpg"
+    },
+    "투명 반사 테이블(빛의 반사)": {
+      "prompt": "reflective table surface with professional product placement, controlled reflection, studio lighting from above with umbrella diffusion, commercial advertising quality",
+      "example_image": "backend/data/backgrounds/examples/simple/투명 반사 테이블(빛의 반사).jpg"
+    },
+    "코너 스포트라이트(극적인 조명)": {
+      "prompt": "clean background with subtle corner spotlight, dramatic accent lighting, professional product emphasis, premium presentation technique",
+      "example_image": "backend/data/backgrounds/examples/simple/코너 스포트라이트(극적인 조명).jpg"
+    }
+  },
+  "특수배경": {
+    "화려한 꽃 패턴(식물의 화려한 색채)": {
+      "prompt": "vibrant floral pattern backdrop with rich color palette, botanical illustration style, premium decorative wallpaper aesthetic, luxury product presentation, editorial fashion quality",
+      "example_image": "backend/data/backgrounds/examples/special/화려한 꽃 패턴(식물의 화려한 색채).jpg"
+    },
+    "팝아트 도트(레트로 색채의 유희)": {
+      "prompt": "pop art dot pattern with vibrant retro colors, playful artistic composition, nostalgic design elements, contemporary fashion backdrop, creative commercial aesthetic",
+      "example_image": "backend/data/backgrounds/examples/special/팝아트 도트(레트로 색채의 유희).png"
+    },
+    "추상 수채화(유동적인 색채의 예술)": {
+      "prompt": "abstract watercolor background with fluid color blending, artistic paint texture, premium soft gradient, elegant artistic backdrop, sophisticated color composition",
+      "example_image": "backend/data/backgrounds/examples/special/추상 수채화(유동적인 색채의 예술).png"
+    },
+    "아트 페인트 텍스처(예술적 붓 터치의 캔버스)": {
+      "prompt": "art paint texture abstract background with visible brush strokes, premium artistic medium, sophisticated paint interaction, elegant studio atmosphere, creative expression aesthetic",
+      "example_image": "backend/data/backgrounds/examples/special/아트 페인트 텍스처(예술적 붓 터치의 캔버스).png"
+    }
+  },
+  "스튜디오배경": {
+    "미니멀 플랫레이(완벽한 정제)": {
+      "prompt": "minimalist flat lay with clean white background, perfect product placement, professional overhead soft-box lighting, fashion magazine aesthetic, precise shadows",
+      "example_image": "backend/data/backgrounds/examples/studio/미니멀 플랫레이(완벽한 정제).jpg"
+    },
+    "자연 요소 스타일링(유기적 아름다움)": {
+      "prompt": "elegant arrangement with organic elements like flowers and leaves, soft diffused studio lighting from top-left, lifestyle commercial photography with balanced composition",
+      "example_image": "backend/data/backgrounds/examples/studio/자연 요소 스타일링(유기적 아름다움).jpg"
+    },
+    "럭셔리 대리석 욕실(고급스러운 욕실 공간)": {
+      "prompt": "luxury marble bathroom with premium fixtures, soft lighting, elegant vanity, polished surfaces, sophisticated atmosphere, spa-like environment, wellness aesthetic",
+      "example_image": "backend/data/backgrounds/examples/studio/럭셔리 대리석 욕실(고급스러운 욕실 공간).jpg"
+    },
+    "프로덕트 시네마틱(영화 같은 연출)": {
+      "prompt": "cinematic product hero shot, dramatic lighting with precision barn doors, atmospheric haze, premium composition, film quality aesthetics",
+      "example_image": "backend/data/backgrounds/examples/studio/프로덕트 시네마틱(영화 같은 연출).jpg"
+    }
+  }
+}
