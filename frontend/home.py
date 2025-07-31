@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import json
+import uuid
 import os
 import time
 import sys
@@ -37,6 +38,25 @@ if 'config_created' not in st.session_state:
     st.session_state.config_created = False
 if 'server_connected' not in st.session_state:
     st.session_state.server_connected = None
+
+def initialize_user_session():
+    """사용자별 고유 세션 ID 생성"""
+    if 'user_session_id' not in st.session_state:
+        st.session_state.user_session_id = str(uuid.uuid4())
+        logger.info(f"새 사용자 세션 생성: {st.session_state.user_session_id}")
+    return st.session_state.user_session_id
+
+def get_user_session_key(base_key: str) -> str:
+    """사용자별 세션 키 생성"""
+    user_id = st.session_state.get('user_session_id', 'default')
+    return f"{base_key}_{user_id}"
+
+def get_user_temp_dir():
+    """사용자별 임시 디렉토리 경로 반환"""
+    user_id = st.session_state.get('user_session_id', 'default')
+    temp_dir = Path(__file__).parent.parent / "temp" / user_id
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    return temp_dir
 
 def validate_form_data(form_data: Dict[str, Any], uploaded_files=None) -> Dict[str, str]:
     """폼 데이터 유효성 검증"""
@@ -100,9 +120,23 @@ def validate_form_data(form_data: Dict[str, Any], uploaded_files=None) -> Dict[s
 
 def process_input_via_api(form_data: Dict[str, Any], uploaded_files=None) -> Optional[Dict[str, Any]]:
     """API를 통한 입력 처리"""
+    # 사용자 세션 ID 확보
+    user_session_id = initialize_user_session()
+    form_data['user_session_id'] = user_session_id
+    
+    logger.debug(f"🛠️ API 입력 처리 (세션: {user_session_id[:8]}...)")
+
     logger.debug("🛠️ API를 통한 입력 처리 시작")
     logger.debug(f"🛠️ 폼 데이터: {list(form_data.keys())}")
     logger.debug(f"🛠️ 업로드된 파일 수: {len(uploaded_files) if uploaded_files else 0}")
+
+    logger.debug(f"🛠️ API 입력 처리 (세션: {user_session_id[:8]}...)")
+    
+    # 🔍 업로드된 파일들의 정보 로깅
+    if uploaded_files:
+        logger.debug(f"🔍 업로드된 파일들:")
+        for i, uploaded_file in enumerate(uploaded_files):
+            logger.debug(f"  - 파일 {i+1}: {uploaded_file.name} ({len(uploaded_file.getvalue())} bytes)")
     
     try:
         # 서버 연결 상태 확인
@@ -151,8 +185,15 @@ def process_input_via_api(form_data: Dict[str, Any], uploaded_files=None) -> Opt
             logger.debug(f"🛠️ API 응답 성공: {result.get('success', False)}")
             
             if result.get('success'):
-                logger.info("✅ API를 통한 입력 처리 완료")
-                return result.get('data')
+                result_data = result.get('data')
+                # 🔍 반환된 이미지 경로들 확인
+                image_paths = result_data.get('image_path_list', [])
+                logger.debug(f"🔍 API에서 반환된 이미지 경로들:")
+                for i, path in enumerate(image_paths):
+                    logger.debug(f"  - 경로 {i+1}: {path}")
+                    logger.debug(f"  - 사용자 세션 포함 여부: {user_session_id in path}")
+                
+                return result_data
             else:
                 error_msg = result.get('message', '알 수 없는 오류')
                 logger.error(f"❌ 서버 처리 오류: {error_msg}")
@@ -180,7 +221,7 @@ def process_input_via_api(form_data: Dict[str, Any], uploaded_files=None) -> Opt
         st.error("❌ 요청 시간이 초과되었습니다. 다시 시도해주세요.")
         return None
     except Exception as e:
-        logger.error(f"❌ API 처리 중 예외 발생: {str(e)}")
+        logger.error(f"❌ API 처리 실패 (세션: {user_session_id[:8]}...): {e}")
         st.error(f"❌ 처리 중 오류 발생: {str(e)}")
         return None
 
@@ -239,6 +280,19 @@ def main():
         return
     
     logger.debug("🛠️ 서버 연결 확인됨, 정상 기능 제공")
+
+    # 페이지 시작 시 사용자 세션 초기화
+    user_session_id = initialize_user_session()
+    
+    # 사용자별 세션 상태 키 사용
+    processed_data_key = get_user_session_key('processed_data')
+    config_created_key = get_user_session_key('config_created')
+    
+    # 세션 상태 초기화 (사용자별)
+    if processed_data_key not in st.session_state:
+        st.session_state[processed_data_key] = None
+    if config_created_key not in st.session_state:
+        st.session_state[config_created_key] = False
     
     # 입력 폼
     with st.form("product_form"):
@@ -397,6 +451,10 @@ def main():
                 logger.info("✅ 상품 정보 처리 성공")
                 st.session_state.processed_data = result
                 st.session_state.config_created = True
+                st.session_state[processed_data_key] = result
+                st.session_state[config_created_key] = True
+                # 세션 ID를 다음 페이지로 전달
+                st.session_state.current_user_session = user_session_id
                 st.success("✅ 상품 정보 처리가 완료되었습니다!")
                 st.info("🎨 이미지 합성 페이지로 이동합니다...")
                 time.sleep(1)  # 1초 대기

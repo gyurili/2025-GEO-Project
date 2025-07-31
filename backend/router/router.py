@@ -60,46 +60,39 @@ async def process_product_input(
     brand: str = Form(..., description="브랜드"),
     features: str = Form(..., description="상품 특징"),
     image: Optional[UploadFile] = File(None, description="상품 이미지"),
+    user_session_id: str = Form(..., description="사용자 세션 ID"),  # 추가
     handler: InputHandler = Depends(get_input_handler)
 ):
-    """
-    상품 입력 데이터 처리 (단일 이미지)
-    - 폼 데이터 검증
-    - 이미지 업로드 처리
-    - config.yaml 생성
-    - product_input 딕셔너리 반환
-    """
-    logger.debug("🛠️ 상품 입력 데이터 처리 시작")
-    logger.debug(f"🛠️ 요청 데이터: name={name}, category={category}, price={price}, brand={brand}")
-    
+    """상품 입력 데이터 처리 (사용자별 세션 ID 포함)"""
     try:
-        # 폼 데이터 구성
-        logger.debug("🛠️ 폼 데이터 구성 중")
+        # 사용자별 설정 파일 경로
+        user_config_path = f"backend/data/config/config_{user_session_id}.yaml"
+        
         form_data = {
             "name": name,
             "category": category,
             "price": price,
             "brand": brand,
-            "features": features
+            "features": features,
+            "user_session_id": user_session_id  # 추가
         }
-        logger.debug(f"🛠️ 폼 데이터 구성 완료: {form_data}")
         
-        # 입력 처리
-        logger.debug("🛠️ InputHandler를 통한 상품 입력 처리 시작")
+        # 사용자별 처리
         uploaded_files = [image] if image else None
-        product_input = handler.process_form_input(form_data, uploaded_files)
-        logger.info("✅ 상품 입력 처리 완료")
+        product_input = handler.process_form_input_with_session(
+            form_data, uploaded_files, user_session_id
+        )
         
         response = {
             "success": True,
             "message": "상품 입력 처리 완료",
-            "data": product_input
+            "data": product_input,
+            "user_session_id": user_session_id
         }
-        logger.debug(f"🛠️ 응답 데이터 준비 완료: {len(str(response))} bytes")
         return response
         
     except Exception as e:
-        logger.error(f"❌ 상품 입력 처리 실패: {e}")
+        logger.error(f"❌ 상품 입력 처리 실패 (세션: {user_session_id}): {e}")
         raise HTTPException(
             status_code=400,
             detail=f"상품 입력 처리 중 오류 발생: {str(e)}"

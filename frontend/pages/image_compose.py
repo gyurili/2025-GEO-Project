@@ -43,25 +43,27 @@ def get_analysis_start_time():
 def set_analysis_start_time(start_time):
     st.session_state.analysis_start_time = start_time
 
-def analyze_product_async(product_data: Dict[str, Any]):
-    """백그라운드에서 상품 분석을 수행하는 함수"""
-    import json
-    import os
-    from pathlib import Path
-    
+def get_user_session_key(base_key: str) -> str:
+    """사용자별 세션 키 생성"""
+    user_id = st.session_state.get('user_session_id', 'default')
+    return f"{base_key}_{user_id}"
+
+def analyze_product_async_with_session(product_data: Dict[str, Any], user_session_id: str):
+    """사용자별 백그라운드 상품 분석"""
     try:
-        logger.info("🚀 백그라운드 상품 분석 시작")
+        logger.info(f"🚀 백그라운드 상품 분석 시작 (세션: {user_session_id})")
         
-        # 임시 파일로 상태 저장 (스레드 안전성)
-        temp_dir = Path(__file__).parent.parent.parent / "temp"
-        temp_dir.mkdir(exist_ok=True)
+        # 사용자별 임시 파일 경로
+        temp_dir = Path(__file__).parent.parent.parent / "temp" / user_session_id
+        temp_dir.mkdir(parents=True, exist_ok=True)
         status_file = temp_dir / "analysis_status.json"
         
         # 실행 중 상태 저장
         status_data = {
             "status": "running",
             "start_time": datetime.now().isoformat(),
-            "result": None
+            "result": None,
+            "user_session_id": user_session_id
         }
         with open(status_file, 'w', encoding='utf-8') as f:
             json.dump(status_data, f, ensure_ascii=False)
@@ -71,19 +73,12 @@ def analyze_product_async(product_data: Dict[str, Any]):
         result = analyze_product(product_data)
         
         duration = (datetime.now() - start_time).total_seconds()
-        logger.info(f"🛠️ 상품 분석 API 호출 결과 (소요시간: {duration:.2f}초): {result}")
+        logger.info(f"🛠️ 상품 분석 완료 (세션: {user_session_id}, 소요: {duration:.2f}초)")
         
-        # 백엔드 응답 형태에 맞게 처리
+        # 결과 처리
         if result and result.get('success') and 'data' in result:
-            logger.info("✅ 백그라운드 상품 분석 성공")
             final_result = {"success": True, "data": result['data']}
-            logger.debug(f"🛠️ 저장될 후보 이미지: {final_result['data'].get('candidate_images', [])}")
-        elif result and isinstance(result, dict) and 'differences' in result:
-            # 이전 형태의 응답 처리 (하위 호환성)
-            logger.info("✅ 백그라운드 상품 분석 성공 (이전 형태)")
-            final_result = {"success": True, "data": result}
         else:
-            logger.error(f"❌ 백그라운드 상품 분석 실패: {result}")
             final_result = result or {"success": False, "error": "API 응답 없음"}
         
         # 완료 상태 저장
@@ -91,100 +86,77 @@ def analyze_product_async(product_data: Dict[str, Any]):
             "status": "completed" if final_result.get('success') else "failed",
             "start_time": start_time.isoformat(),
             "end_time": datetime.now().isoformat(),
-            "result": final_result
+            "result": final_result,
+            "user_session_id": user_session_id
         }
         with open(status_file, 'w', encoding='utf-8') as f:
             json.dump(status_data, f, ensure_ascii=False)
             
-        logger.debug(f"🛠️ 분석 결과를 임시 파일에 저장: {status_file}")
-            
     except Exception as e:
-        logger.error(f"❌ 백그라운드 상품 분석 중 예외 발생: {str(e)}")
+        logger.error(f"❌ 백그라운드 분석 실패 (세션: {user_session_id}): {e}")
         status_data = {
             "status": "failed",
             "start_time": datetime.now().isoformat(),
             "end_time": datetime.now().isoformat(),
-            "result": {"success": False, "error": str(e)}
+            "result": {"success": False, "error": str(e)},
+            "user_session_id": user_session_id
         }
         with open(status_file, 'w', encoding='utf-8') as f:
             json.dump(status_data, f, ensure_ascii=False)
 
 def handle_async_product_analysis():
-    """비동기 상품 분석을 처리하는 메인 함수 (백그라운드 실행)"""
-    import json
-    from pathlib import Path
+    """사용자별 비동기 상품 분석 처리"""
     
-    # 처리된 데이터가 있는지 확인
-    if 'processed_data' not in st.session_state or not st.session_state.processed_data:
+    # 사용자 세션 ID 확보
+    user_session_id = st.session_state.get('user_session_id')
+    if not user_session_id:
+        st.error("❌ 세션 정보가 없습니다. 홈페이지에서 다시 시작해주세요.")
         return
     
-    # 페이지 진입 시 한 번만 실행하도록 처리
-    page_entry_key = 'image_compose_page_entered'
-    if page_entry_key not in st.session_state:
-        st.session_state[page_entry_key] = True
-        # 페이지 첫 진입 시 임시 파일 정리
-        temp_dir = Path(__file__).parent.parent.parent / "temp"
-        status_file = temp_dir / "analysis_status.json"
-        if status_file.exists():
-            try:
-                status_file.unlink()
-                logger.info("🛠️ 기존 분석 상태 파일 삭제")
-            except Exception as e:
-                logger.warning(f"⚠️ 상태 파일 삭제 실패: {e}")
+    # 사용자별 처리된 데이터 키
+    processed_data_key = get_user_session_key('processed_data')
+    analysis_started_key = get_user_session_key('analysis_started')
+    analysis_result_key = get_user_session_key('analysis_result')
     
-    # 이미 분석을 시작했는지 세션에서 확인 (무한루프 방지)
-    if 'analysis_started' not in st.session_state:
-        st.session_state.analysis_started = False
+    if processed_data_key not in st.session_state:
+        return
     
-    # 임시 파일에서 상태 확인
-    temp_dir = Path(__file__).parent.parent.parent / "temp"
+    # 사용자별 임시 파일 경로
+    temp_dir = Path(__file__).parent.parent.parent / "temp" / user_session_id
     status_file = temp_dir / "analysis_status.json"
     
-    current_status = "idle"
-    current_result = None
-    current_start_time = None
+    # 분석 시작 여부 확인 (사용자별)
+    if analysis_started_key not in st.session_state:
+        st.session_state[analysis_started_key] = False
     
+    current_status = "idle"
     if status_file.exists():
         try:
             with open(status_file, 'r', encoding='utf-8') as f:
                 status_data = json.load(f)
                 current_status = status_data.get("status", "idle")
-                current_result = status_data.get("result")
-                start_time_str = status_data.get("start_time")
-                if start_time_str:
-                    current_start_time = datetime.fromisoformat(start_time_str)
-                logger.debug(f"🛠️ 파일에서 로드한 상태: {current_status}")
+                
+                # 완료된 경우 결과를 사용자별 세션에 저장
+                if current_status == "completed":
+                    current_result = status_data.get("result")
+                    if current_result and analysis_result_key not in st.session_state:
+                        st.session_state[analysis_result_key] = current_result
+                        logger.info(f"✅ 분석 결과 로드 (세션: {user_session_id[:8]}...)")
         except Exception as e:
-            logger.error(f"❌ 상태 파일 읽기 실패: {e}")
+            logger.error(f"❌ 상태 파일 읽기 실패 (세션: {user_session_id[:8]}...): {e}")
     
-    if current_status == "idle" and not st.session_state.analysis_started:
-        # 자동으로 분석 시작 (사용자에게 노출 안됨)
-        logger.info("🚀 상품 분석 백그라운드 시작")
+    # 분석 시작 (사용자별)
+    if current_status == "idle" and not st.session_state[analysis_started_key]:
+        logger.info(f"🚀 분석 시작 (세션: {user_session_id[:8]}...)")
+        st.session_state[analysis_started_key] = True
         
-        st.session_state.analysis_started = True
-        
-        # 스레드로 백그라운드 실행
+        # 백그라운드 분석 시작 (사용자별 세션 ID 포함)
         thread = threading.Thread(
-            target=analyze_product_async,
-            args=(st.session_state.processed_data,)
+            target=analyze_product_async_with_session,
+            args=(st.session_state[processed_data_key], user_session_id)
         )
         thread.daemon = True
         thread.start()
-    
-    elif current_status == "completed":
-        # 완료 상태 - 결과를 세션에 저장만 하고 UI 노출 안함
-        if current_result and 'analysis_result' not in st.session_state:
-            st.session_state.analysis_result = current_result
-            logger.info("✅ 백그라운드 상품 분석 완료 - 세션에 저장")
-            logger.debug(f"🛠️ 저장된 후보 이미지 수: {len(current_result.get('data', {}).get('candidate_images', []))}")
-    
-    elif current_status == "failed":
-        # 실패 상태 - 로그만 남기고 UI 노출 안함
-        if current_result:
-            error_msg = current_result.get("error", "알 수 없는 오류")
-            logger.error(f"❌ 백그라운드 상품 분석 실패: {error_msg}")
-        else:
-            logger.error("❌ 백그라운드 상품 분석 실패: 알 수 없는 오류")
     
 
 def load_models_data():
@@ -245,15 +217,27 @@ def load_all_backgrounds_json():
 def display_user_images(tab_key=""):
     """사용자가 업로드한 이미지들 표시 및 다중 선택"""
     logger.debug("🛠️ 사용자 이미지 표시 시작")
+
+    user_session_id = st.session_state.get('user_session_id')
+    processed_data_key = get_user_session_key('processed_data')
     
-    if 'processed_data' not in st.session_state or not st.session_state.processed_data:
+    if processed_data_key not in st.session_state:
+        st.error("❌ 상품 데이터가 없습니다.")
+        return None
+    
+    # 사용자별 선택 상태 키
+    selected_images_key = get_user_session_key(f'selected_user_images_{tab_key}')
+    
+    # ✅ 사용자별 키에서 데이터 확인 및 가져오기
+    processed_data = st.session_state[processed_data_key]
+    
+    if not processed_data:
         logger.warning("⚠️ 처리된 상품 데이터가 없음")
         st.error("❌ 상품 데이터가 없습니다. 먼저 상품 정보를 입력해주세요.")
         if st.button("🔙 상품 입력 페이지로 돌아가기", key=f"back_to_home_user_{tab_key}"):
             st.switch_page("home.py")
         return None
-    
-    processed_data = st.session_state.processed_data
+
     logger.debug(f"🛠️ 처리된 데이터: {processed_data}")
     image_paths = processed_data.get('image_path_list', [])
     logger.debug(f"🛠️ 이미지 경로들: {image_paths}")
@@ -269,7 +253,6 @@ def display_user_images(tab_key=""):
     st.write("합성에 사용할 상품 이미지를 선택해주세요. (여러 개 선택 가능)")
     
     # 세션 상태에서 선택된 이미지들 초기화
-    selected_images_key = f'selected_user_images_{tab_key}'
     if selected_images_key not in st.session_state:
         st.session_state[selected_images_key] = []
     
@@ -376,6 +359,12 @@ def display_user_images(tab_key=""):
                     'path': str(full_path),
                     'relative_path': image_paths[idx]
                 })
+        
+        # 🔍 디버깅 코드를 선택된 이미지들이 정의된 후로 이동
+        logger.debug(f"🔍 전송할 사용자 이미지들:")
+        for i, img_data in enumerate(selected_user_images):
+            logger.debug(f"  - 이미지 {i+1}: {img_data}")
+            logger.debug(f"  - 경로 존재 여부: {os.path.exists(img_data['path'])}")
         
         logger.debug(f"🛠️ 선택된 사용자 이미지 수: {len(selected_user_images)}")
         return selected_user_images
@@ -612,8 +601,12 @@ def show_generation_buttons(selected_user_images, selected_target_image, generat
             if st.button(button_text, use_container_width=True, type="primary", key=f"generate_{generation_options['type']}"):
                 logger.debug(f"🛠️ {generation_type} 합성 시작 버튼 클릭 ({user_count}개 상품)")
                 
+                # 사용자 세션 ID 확보
+                user_session_id = st.session_state.get('user_session_id')
+                analysis_result_key = get_user_session_key('analysis_result')
+
                 # 🔍 분석 결과 확인
-                analysis_result = st.session_state.get('analysis_result')
+                analysis_result = st.session_state.get(analysis_result_key)
                 
                 if not analysis_result:
                     # 분석 결과가 아직 없는 경우
@@ -664,13 +657,27 @@ def show_generation_buttons(selected_user_images, selected_target_image, generat
                 
                 logger.info(f"✅ 분석 결과 확인 완료 - 합성 진행")
                 
+                # 사용자 세션 ID 확보
+                user_session_id = st.session_state.get('user_session_id')
+
                 # 단일 API 호출용 합성 데이터
                 composition_data = {
                     'user_images': selected_user_images,
-                    'target_image': selected_target_image,  # 배경의 경우 카테고리 정보 포함
+                    'target_image': selected_target_image,
                     'generation_options': generation_options,
-                    'product_data': st.session_state.processed_data
+                    'product_data': st.session_state[get_user_session_key('processed_data')],
+                    'user_session_id': user_session_id  # 추가
                 }
+
+                # 🔍 디버깅 코드 추가
+                logger.debug(f"🔍 전송할 사용자 이미지들:")
+                for i, img_data in enumerate(selected_user_images):
+                    logger.debug(f"  - 이미지 {i+1}: {img_data}")
+                    logger.debug(f"  - 경로 존재 여부: {os.path.exists(img_data['path'])}")
+
+                logger.debug(f"🔍 타겟 이미지: {selected_target_image}")
+                if isinstance(selected_target_image, dict) and 'path' in selected_target_image:
+                    logger.debug(f"🔍 타겟 경로 존재 여부: {os.path.exists(selected_target_image['path'])}")
                 
                 st.session_state.composition_data = composition_data
                 logger.info(f"✅ {generation_type} 합성 데이터 준비 완료 ({user_count}개 상품)")
@@ -678,13 +685,22 @@ def show_generation_buttons(selected_user_images, selected_target_image, generat
                 # API 클라이언트를 사용한 이미지 합성 호출
                 with st.spinner(f"{generation_type} 이미지 합성 중... ({user_count}개 상품)"):
                     try:
+                        # API 호출 및 결과를 사용자별 세션에 저장
                         result = compose_images(composition_data)
-                        
+                        logger.debug(f"🔍 API 전체 응답: {result}")
+                        # st.write(f"🔍 디버그 - API 응답: {result}")  # 임시 디버깅용
+
+                        # if result and result.get('success'):
+                        #     st.write(f"🔍 디버그 - 응답 데이터 키: {list(result.keys())}")  # 임시 디버깅용
                         if result and result.get('success'):
-                            # 결과가 단일인지 다중인지 확인
-                            if 'results' in result['data']:
+                            # ✅ 백엔드 응답 구조 확인 및 처리
+                            data = result.get('data', {})
+                            logger.debug(f"🛠️ API 응답 데이터 구조: {list(data.keys())}")
+                            
+                            # 'results' 키가 있는지 확인
+                            if 'results' in data:
                                 # 다중 결과 (개별 생성)
-                                results_data = result['data']['results']
+                                results_data = data['results']
                                 st.success(f"🎉 {generation_type} 이미지 {len(results_data)}개가 생성되었습니다!")
                                 
                                 combined_results = []
@@ -696,20 +712,49 @@ def show_generation_buttons(selected_user_images, selected_target_image, generat
                                         'result_type': 'composition',
                                         'title': f'{generation_type} 합성 결과 {i+1}',
                                         'generation_type': generation_type,
-                                        'input_images': 2 if generation_type == 'model' else 1,  # 상품+모델 또는 상품만
+                                        'input_images': 2 if generation_type == 'model' else 1,
                                     }
                                     combined_results.append(composition_result)
-                            else:
-                                # 단일 결과 (통합 생성)
-                                st.success(f"🎉 {generation_type} 이미지 합성이 완료되었습니다!")
+                                    logger.debug(f"✅ 합성 결과 {i+1} 추가: {individual_result.get('result_image_path', 'N/A')}")
+                            
+                            # ✅ 'results' 키가 없는 경우 (단일 결과) 처리 추가
+                            elif 'result_image_path' in data:
+                                # 단일 결과 직접 처리
+                                st.success(f"🎉 {generation_type} 이미지가 생성되었습니다!")
                                 
                                 combined_results = []
-                                
-                                # 단일 합성 결과 추가
-                                composition_result = result['data']
-                                composition_result['result_type'] = 'composition'
-                                composition_result['title'] = f'{generation_type} 합성 결과'
+                                composition_result = {
+                                    **data,
+                                    'result_type': 'composition',
+                                    'title': f'{generation_type} 합성 결과',
+                                    'generation_type': generation_type,
+                                }
                                 combined_results.append(composition_result)
+                                logger.debug(f"✅ 단일 합성 결과 추가: {data.get('result_image_path', 'N/A')}")
+                            
+                            # ✅ 백엔드 응답에 맞춰 처리 (results 키가 있지만 data 하위에 있는 경우)
+                            else:
+                                # 전체 result를 data로 처리
+                                logger.debug(f"🛠️ 전체 결과 구조 확인: {list(result.keys())}")
+                                if 'results' in result:
+                                    results_data = result['results']
+                                    st.success(f"🎉 {generation_type} 이미지 {len(results_data)}개가 생성되었습니다!")
+                                    
+                                    combined_results = []
+                                    for i, individual_result in enumerate(results_data):
+                                        composition_result = {
+                                            **individual_result,
+                                            'result_type': 'composition',
+                                            'title': f'{generation_type} 합성 결과 {i+1}',
+                                            'generation_type': generation_type,
+                                            'input_images': 2 if generation_type == 'model' else 1,
+                                        }
+                                        combined_results.append(composition_result)
+                                        logger.debug(f"✅ 합성 결과 {i+1} 추가: {individual_result.get('result_image_path', 'N/A')}")
+                                else:
+                                    logger.error("❌ 예상치 못한 응답 구조")
+                                    st.error("❌ 예상치 못한 응답 구조입니다.")
+                                    return
                             
                             # 2. 분석 결과의 후보 이미지들 추가 (이제 analysis_result 확보됨)
                             if analysis_result and analysis_result.get('success') and 'data' in analysis_result:
@@ -743,7 +788,9 @@ def show_generation_buttons(selected_user_images, selected_target_image, generat
                                                 logger.debug(f"✅ 후보 이미지 추가됨: {clean_path}")
                             
                             # 전체 결과를 세션에 저장
-                            st.session_state.combined_results = combined_results
+                            combined_results_key = get_user_session_key('combined_results')
+                            st.session_state[combined_results_key] = combined_results
+                            logger.info(f"✅ 세션에 결과 저장 완료: {len(combined_results)}개")
                             st.rerun()  # 결과 표시를 위해 페이지 새로고침
                                 
                         else:
@@ -1534,12 +1581,22 @@ def main():
         display_result_selection(result)
 
     # 결합된 결과 (합성 + 분석) 표시
-    if 'combined_results' in st.session_state:
+    combined_results_key = get_user_session_key('combined_results')
+    
+    if combined_results_key in st.session_state:
         st.markdown("---")
         st.header("🎨 생성된 모든 결과")
         
-        results = st.session_state.combined_results
+        results = st.session_state[combined_results_key]
         display_combined_results_selection(results)
+        
+        # ✅ 전역 키도 확인해보기 (임시)
+        if 'combined_results' in st.session_state:
+            st.sidebar.write("**전역 키에서 결과 발견**")
+            st.markdown("---")
+            st.header("🎨 생성된 모든 결과")
+            results = st.session_state['combined_results']
+            display_combined_results_selection(results)
 
     # 또는 composition_results (다중 결과)가 있는 경우
     if 'composition_results' in st.session_state:

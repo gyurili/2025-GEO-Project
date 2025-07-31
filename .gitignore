@@ -203,8 +203,9 @@ credentials.json
 *.yaml
 *.yml
 config.yaml
-backend/data/
-data
+backend/data/input
+backend/data/output
+backend/data/result
 
 # Images
 *.jpg

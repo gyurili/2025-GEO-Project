@@ -15,20 +15,33 @@ from utils.logger import get_logger
 # 로거 설정
 logger = get_logger(__name__)
 
+def get_user_session_key(base_key: str) -> str:
+    """사용자별 세션 키 생성"""
+    user_id = st.session_state.get('user_session_id', 'default')
+    return f"{base_key}_{user_id}"
+
 def load_result_data() -> Optional[Dict[str, Any]]:
-    """결과 데이터 로드"""
+    """결과 데이터 로드 (사용자별)"""
     logger.debug("🛠️ 결과 데이터 로드 시작")
     
-    # 세션에서 상세페이지 생성 결과 확인
-    if 'detail_page_result' in st.session_state:
-        result = st.session_state.detail_page_result
-        logger.debug(f"🛠️ 세션에서 상세페이지 결과 로드: {result.keys() if result else 'None'}")
+    # 사용자별 세션에서 상세페이지 생성 결과 확인
+    detail_result_key = get_user_session_key('detail_page_result')
+    if detail_result_key in st.session_state:
+        result = st.session_state[detail_result_key]
+        logger.debug(f"🛠️ 사용자별 세션에서 상세페이지 결과 로드: {result.keys() if result else 'None'}")
         return result
     
-    # 백업: 합성 결과도 확인
-    if 'composition_result' in st.session_state:
-        result = st.session_state.composition_result
-        logger.debug(f"🛠️ 세션에서 합성 결과 로드: {result.keys() if result else 'None'}")
+    # 백업: 전역 세션 확인
+    if 'detail_page_result' in st.session_state:
+        result = st.session_state.detail_page_result
+        logger.debug(f"🛠️ 전역 세션에서 상세페이지 결과 로드: {result.keys() if result else 'None'}")
+        return result
+    
+    # 백업: 합성 결과도 확인 (사용자별)
+    composition_result_key = get_user_session_key('composition_result')
+    if composition_result_key in st.session_state:
+        result = st.session_state[composition_result_key]
+        logger.debug(f"🛠️ 사용자별 세션에서 합성 결과 로드: {result.keys() if result else 'None'}")
         return result
     
     logger.warning("⚠️ 결과 데이터가 없음")
@@ -439,8 +452,19 @@ def main():
         display_download_section(image_path, html_path, result_data)
     
     with col2:
-        # 상품 정보 표시
-        if 'processed_data' in st.session_state:
+        # 상품 정보 표시 (사용자별 세션 고려)
+        processed_data_key = get_user_session_key('processed_data')
+        
+        if processed_data_key in st.session_state:
+            product_data = st.session_state[processed_data_key]
+            st.subheader("📦 상품 정보")
+            st.write(f"**상품명:** {product_data.get('name', 'N/A')}")
+            st.write(f"**브랜드:** {product_data.get('brand', 'N/A')}")
+            st.write(f"**카테고리:** {product_data.get('category', 'N/A')}")
+            st.write(f"**가격:** {product_data.get('price', 0):,}원")
+            st.write(f"**특징:** {product_data.get('features', 'N/A')}")
+        elif 'processed_data' in st.session_state:
+            # 백업: 전역 세션에서 가져오기
             product_data = st.session_state.processed_data
             st.subheader("📦 상품 정보")
             st.write(f"**상품명:** {product_data.get('name', 'N/A')}")
@@ -476,18 +500,28 @@ def main():
     
     with col3:
         if st.button("🔄 새로 시작하기", use_container_width=True):
-            # 세션 상태 초기화
-            keys_to_clear = [
+            # 사용자별 세션 상태 초기화
+            user_session_id = st.session_state.get('user_session_id', 'default')
+            
+            # 사용자별 키들 초기화
+            user_keys_to_clear = [
                 'processed_data', 'composition_result', 'composition_data', 'detail_page_result',
                 'selected_user_images_model', 'selected_user_images_background',
                 'selected_model_image', 'selected_background',
                 'analysis_result', 'analysis_started', 'combined_results'
             ]
-            for key in keys_to_clear:
+            
+            for base_key in user_keys_to_clear:
+                user_key = get_user_session_key(base_key)
+                if user_key in st.session_state:
+                    del st.session_state[user_key]
+            
+            # 전역 키들도 초기화 (호환성)
+            for key in user_keys_to_clear:
                 if key in st.session_state:
                     del st.session_state[key]
             
-            logger.info("✅ 세션 상태 초기화 완료")
+            logger.info(f"✅ 사용자 세션 상태 초기화 완료 (세션: {user_session_id[:8]}...)")
             st.switch_page("home.py")
 
 if __name__ == "__main__":
