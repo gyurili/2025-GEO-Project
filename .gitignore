@@ -211,7 +211,6 @@ backend/data/result
 *.jpg
 *.jpeg
 *.png
-*.gif
 *.bmp
 *.tiff
 *.webp

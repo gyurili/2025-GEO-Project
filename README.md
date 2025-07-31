@@ -2,7 +2,7 @@
 
 ---
 
-![Demo]()
+![Demo](assets/demo.gif)
 
 > **GEOPage**는 생성형 AI 기반으로 소상공인의 상품 상세페이지를 자동 생성하여 AI 검색(GEO)에 최적화된 마케팅 콘텐츠를 제공하는 플랫폼입니다.
 
@@ -16,14 +16,13 @@
 
 ### **배경**
 
-- 최근 온라인 검색 패러다임은 **SEO(키워드 중심)에서 GEO(Generative Engine Optimization) 중심으로 변화**하고 있습니다.
-＃ 한영 통일
+- 온라인 검색 패러다임은 **SEO(키워드 중심)에서 GEO(Generative Engine Optimization) 중심으로 변화**하고 있습니다.
 - 기존 상세페이지는 이미지 중심으로 **AI 검색 노출에 불리한 구조**를 갖고 있습니다.
 - AI 검색에서 제품이 노출되려면 **AI가 이해할 수 있는 구조적 콘텐츠**가 필요합니다. 그러나 대부분의 소상공인은 **이 변화를 따라가기 어려운 현실**에 직면해 있습니다.
 
 ### **목표**
 
-- 소상공인이 **단순 입력(상품명, 키워드, 이미지**)만으로 **AI 검색에 최적화된 상세페이지**를 자동 생성할 수 있도록 지원합니다.
+- **단순 입력(상품명, 특징, 이미지**)만으로 **AI 검색에 최적화된 상세페이지**를 자동 생성할 수 있도록 지원합니다.
 - 텍스트와 이미지를 동시에 생성해 **브랜드 아이덴티티와 마케팅 효과를 강화**합니다.
 - **SEO + GEO 전략을 통합**해 AI 검색 시대에도 경쟁력 있는 온라인 스토어 구축을 지원합니다.
 
@@ -140,12 +139,20 @@ set PYTHONPATH=c:/2025-GEO-Project
 **1. 크롤러(local_run.py) 실행 (VPN/프록시 적용 후)**
 
 ```bash
-python backend/competitor_analysis/core/local_run.py
+python backend/competitor_analysis/local_run.py
 ```
 
 - 리뷰 크롤링 → 요약 → DB 저장 (백그라운드 실행 필요)
 
-**2. 메인 애플리케이션 실행(run.py)**
+**2. 제공된 seed(init_seed_categories.py) 실행 (선택)**
+
+```bash
+python backemd/competitor_analysis/init_seed_categories.py
+```
+
+- initial_categories.json 내부의 카테고리들을 크롤링 하도록 실행
+
+**3. 메인 애플리케이션 실행(run.py)**
 
 ```bash
 python run.py
@@ -201,31 +208,12 @@ geopage/
 └── README.md                   # 프로젝트 설명 문서
 ```
 
-- **backend**: 백엔드 핵심 로직. 이미지 생성, 텍스트 생성, 페이지 변환, 경쟁사 분석 기능을 제공
-- **input_handler**: 사용자 입력 값 파싱, 데이터 유효성 검증, 전처리 담당
-- **competitor_analysis**: 경쟁사 리뷰 데이터 크롤링 및 GPT 기반 불만 요약 후 차별화 포인트 도출
-- **image_generator**: Stable Diffusion + IP-Adapter 기반 이미지 생성 파이프라인, 배경 제거(rembg) 포함
-- **text_generator**: OpenAI GPT 기반 상세페이지 텍스트 및 GEO 최적화 문구 생성
-- **page_generator**: HTML 상세페이지 생성 및 Playwright로 이미지 변환
-- **routers**: FastAPI 라우팅 (API 엔드포인트 집합)
-- **models**: 외부 모델 관리 (HuggingFace 모델, LoRA, ControlNet 로드)
-- **data**: 입력 이미지, 결과 이미지, 임시 파일 저장
-- **main.py**: FastAPI 서버 실행 엔트리포인트
-- **frontend**: Streamlit 기반 사용자 인터페이스. 상품 정보 입력, 이미지 결과 시각화 제공
-- **utils**: 공통 유틸리티 (로깅, 설정 로더, 경로 관리)
-- **run.py**: 백엔드 + 프론트엔드 통합 실행 스크립트
-- **setup.sh**: 시스템 의존성 및 패키지 설치 자동화
-- **requirements.txt**: 프로젝트 Python 라이브러리 목록
-- **config.yaml**: 모델 경로, API 옵션 등 프로젝트 설정값 저장
-- **.env**: API 키, 데이터베이스 설정 등 환경 변수
-- **README.md**: 프로젝트 개요 및 실행 가이드 문서
-
 ## 4. 👥 팀 소개: **GEO-GEO**
 
 ---
 
 > GEO-GEO 팀은 AI 기반의 차세대 마케팅 솔루션 개발을 목표로, 텍스트 생성·이미지 생성·웹 서비스 개발 역량을 가진 팀원들이 모였습니다.
-우리는 단순한 상세페이지 제작을 넘어, AI 검색에 친화적인 콘텐츠 전략을 실제 서비스로 구현합니다.
+단순한 상세페이지 제작을 넘어, AI 검색에 친화적인 콘텐츠 전략을 실제 서비스로 구현합니다.
 
 | 이학진 | 김민준 | 박규리 | 정영선 |
 |:------:|:------:|:------:|:------:|
@@ -248,20 +236,16 @@ geopage/
 | **2025-07-10** | **Streamlit UI 프로토타입** 구현 및 FastAPI 연동 | 김민준 | 완료 |
 | **2025-07-12** | **상세페이지 자동 생성 로직** 완성 (GEO 최적화 프롬프트 적용) | 박규리 | 완료 |
 | **2025-07-15** | **IP-Adapter + ControlNet 적용** 실험 및 이미지 품질 개선 | 정영선 | 완료 |
-| **2025-07-22** | **UI 고도화 + 기능 통합** (프론트-백엔드 통합 테스트) | 김민준 | 진행중 |
-| **2025-07-25** | **최종 테스트 & GEO 성능 검증** | 전원 | 예정 |
-| **2025-07-30** | **최종 보고서 및 README 정리 + 발표자료 제작** | 전원 | 예정 |
+| **2025-07-22** | **UI 고도화 + 기능 통합** (프론트-백엔드 통합 테스트) | 김민준 | 완료 |
+| **2025-07-25** | **최종 테스트 & GEO 성능 검증** | 전원 | 완료 |
+| **2025-07-30** | **최종 보고서 및 README 정리 + 발표자료 제작** | 전원 | 완료 |
 ## 6. 📎 참고 자료 및 산출물
 
 ---
 
-- 📘 **최종 보고서**: 
-- 📽️ **발표자료 (PPT)**: 
-- 🗂️ **팀원별 협업 일지**
-    - 이학진 협업일지:
-    - 김민준 협업일지:
-    - 박규리 협업일지:
-    - 정영선 협업일지:
+- 📘 **최종 보고서**: [다운로드](https://drive.google.com/file/d/1Nj7hDIIebIwU39wSdIEJab0QzZFO3Ha9/view?usp=sharing)
+- 📽️ **발표자료 (PPT)**: [확인하기](https://www.canva.com/design/DAGuCSTvzSM/Hbghlmvl8-dPgXEr2vlF3Q/edit?utm_content=DAGuCSTvzSM&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
+
 
 ## 7. 📄 사용한 모델 및 라이센스
 
