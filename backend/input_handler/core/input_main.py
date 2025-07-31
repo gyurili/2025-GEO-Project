@@ -41,6 +41,9 @@ class InputHandler:
         self.input_dir = os.path.join(self.data_dir, "input")
         self.output_dir = os.path.join(self.data_dir, "output")
         self.result_dir = os.path.join(self.data_dir, "result")
+
+        self.base_config_dir = Path("backend/data/config")
+        self.base_config_dir.mkdir(parents=True, exist_ok=True)
         
         logger.debug(f"🛠️ 디렉토리 경로 설정 완료:")
         logger.debug(f"🛠️   - data: {self.data_dir}")
@@ -147,6 +150,44 @@ class InputHandler:
         except Exception as e:
             logger.error(f"❌ 이미지 업로드 처리 중 오류: {e}")
             return None
+    
+    def get_user_config_path(self, user_session_id: str) -> Path:
+        """사용자별 설정 파일 경로 반환"""
+        return self.base_config_dir / f"config_{user_session_id}.yaml"
+    
+    def process_form_input_with_session(self, form_data: dict, uploaded_files, user_session_id: str):
+        """사용자별 세션을 고려한 폼 입력 처리"""
+        try:
+            # 사용자별 설정 파일 경로
+            config_path = self.get_user_config_path(user_session_id)
+            
+            # 사용자별 이미지 저장 경로
+            user_input_dir = Path(f"backend/data/input/{user_session_id}")
+            user_input_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 기존 로직 + 사용자별 경로 적용
+            product_input = self.process_form_input(form_data, uploaded_files)
+            product_input['user_session_id'] = user_session_id
+            product_input['config_path'] = str(config_path)
+            
+            # 사용자별 설정 파일 저장
+            self.save_config_with_session(product_input, config_path)
+            
+            return product_input
+            
+        except Exception as e:
+            logger.error(f"❌ 사용자별 폼 입력 처리 실패 (세션: {user_session_id}): {e}")
+            raise
+    
+    def save_config_with_session(self, product_input: dict, config_path: Path):
+        """사용자별 설정 파일 저장"""
+        try:
+            with open(config_path, 'w', encoding='utf-8') as f:
+                yaml.dump(product_input, f, default_flow_style=False, ensure_ascii=False)
+            logger.info(f"✅ 사용자별 설정 파일 저장: {config_path}")
+        except Exception as e:
+            logger.error(f"❌ 설정 파일 저장 실패: {e}")
+            raise
     
     def process_form_input(self, form_data: Dict[str, Any], 
                       uploaded_files=None) -> Dict[str, Any]:

@@ -16,5 +16,4 @@ input:
   brand: 롤프
   features: 꼼꼼한 박음질, 고급스러운 원단, 클래식한 디자인
   image_path_list:
-  - backend/data/input/product_3cf493c11d2a4c7593e3e74d09eaaf65_0.jpg
-  - backend/data/input/product_9d4dd1e9b366421f8afc83c677a52989_1.jpg
+  - backend/data/input/product_4bf5a1180abf4063a864ea374d7eac1b_0.jpg
