@@ -119,41 +119,34 @@ export PYTHONPATH=/2025-GEO-Project
 set PYTHONPATH=c:/2025-GEO-Project
 ```
 
-**1. 크롤러(local_run.py) 실행**
-
-```bash
-python backend/competitor_analysis/local_run.py
-```
-
-- 비공개 서버에서 주기적 리뷰 수집 → 요약 → DB 저장
-
-**2. seed 실행 (선택)**
+**1. 샘플 리뷰 요약 데이터를 DB에 삽입**
 
 ```bash
 python backend/competitor_analysis/init_seed_categories.py
 ```
 
-- initial_categories.json 내부의 카테고리들을 크롤링 하도록 실행
+- sample_review_summary.json을 로드하여 각 카테고리에 대한 요약 데이터를 DB에 삽입합니다.
+- 실제 크롤링은 실행하지 않으며, 해커톤 데모용으로 사전 준비된 데이터 기반으로 작동합니다.
 
-**3. 메인 애플리케이션 실행(run.py)**
+**2. 메인 애플리케이션 실행(run.py)**
 
 ```bash
 python run.py
 ```
 
-- competitor_main → DB에서 요약 조회 or 신호 등록 → local_run 반응
-
----
+- competitor_main → DB에서 요약 조회 → 차별화 포인트 생성
 
 ### 구조 요약
 
 ```css
 [단일 서버 구성 예시]
 MySQL ✅
-local_run.py ✅
-run.py ✅
+init_seed_categories.py ✅ (샘플 데이터 DB 삽입)
+run.py ✅ (FastAPI + 분석 실행)
 .env 설정 필요 (DB 정보 및 BASE_SEARCH_URL)
 ```
+
+---
 
 ## 3. 📂 프로젝트 구조
 
