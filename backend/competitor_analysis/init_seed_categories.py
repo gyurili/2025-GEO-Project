@@ -1,31 +1,37 @@
 import json
 from pathlib import Path
-from backend.competitor_analysis.crawl_signal_server import send_crawl_request_signal
+from backend.competitor_analysis.competitor_db import insert_review_summary
 from utils.config import get_db_config
+from datetime import datetime
 
-def load_seed_and_request(seed_file_path="initial_categories.json"):
+def load_summary_json_and_insert_to_db(summary_json_path="sample_review_summary.json"):
     """
-    초기 카테고리 seed 파일을 로드하고, 크롤링 요청 신호를 DB에 등록합니다.
+    샘플 리뷰 요약 JSON 파일을 로드하여 DB에 직접 삽입합니다.
+
+    Args:
+        summary_json_path (str): 요약 JSON 경로
     """
     db_config = get_db_config()
 
-    seed_path = Path(seed_file_path)
-    if not seed_path.exists():
-        print(f"❌ Seed 파일이 존재하지 않습니다: {seed_file_path}")
+    summary_path = Path(summary_json_path)
+    if not summary_path.exists():
+        print(f"❌ JSON 파일이 존재하지 않습니다: {summary_json_path}")
         return
 
-    with seed_path.open("r", encoding="utf-8") as f:
-        categories = json.load(f)
+    with summary_path.open("r", encoding="utf-8") as f:
+        summary_dict = json.load(f)
 
-    for category in categories:
-        send_crawl_request_signal(
-            db_config["host"],
-            db_config["user"],
-            db_config["password"],
-            db_config["db"],
-            category
+    for category, review_summary in summary_dict.items():
+        insert_review_summary(
+            host=db_config["host"],
+            user=db_config["user"],
+            password=db_config["password"],
+            db=db_config["db"],
+            category=category,
+            review_summary=review_summary,
+            num_reviews=0  # 데모용이므로 0으로 설정
         )
-        print(f"📡 요청 전송 완료: {category}")
+        print(f"✅ DB 삽입 완료: {category}")
 
 if __name__ == "__main__":
-    load_seed_and_request()
+    load_summary_json_and_insert_to_db()
