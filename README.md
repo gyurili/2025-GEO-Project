@@ -59,8 +59,6 @@ chmod +x setup.sh
 source .venv/bin/activate
 ```
 
----
-
 ### 2) 환경 변수 (.env)
 
 `.env` 파일은 프로젝트 루트에 위치합니다.
@@ -69,42 +67,29 @@ source .venv/bin/activate
 OPENAI_API_KEY=YourOpenAIKey
 GEMINI_API_KEY=YourGeminiKey
 HF_TOKEN=YourHuggingfaceKey
-DB_HOST=localhost   # 또는 고정 DB IP
+DB_HOST=localhost
 DB_PASSWORD=your_password
+BASE_SEARCH_URL=https://example.com/np/search
 ```
 
 `config.yaml`
 
 ```yaml
 db_config:
-  host: ""      # .env로 덮어씀
+  host: ""
   user: GEOGEO
-  password: ""  # .env로 덮어씀
+  password: ""
   db: geo_db
 ```
 
----
-
 ### 3) MySQL 설정
-
-**MySQL 설치:**
-
-- Windows: [다운로드](https://dev.mysql.com/downloads/installer/)
-- macOS: `brew install mysql`
-- Ubuntu: `sudo apt install mysql-server`
-
-**DB 및 테이블 생성:**
 
 ```sql
 CREATE DATABASE geo_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'GEOGEO'@'%' IDENTIFIED BY 'your_password';
 GRANT ALL PRIVILEGES ON geo_db.* TO 'GEOGEO'@'%';
 FLUSH PRIVILEGES;
-```
 
-**테이블 구조:**
-
-```sql
 USE geo_db;
 CREATE TABLE competitor_review_summary (
     category VARCHAR(100) PRIMARY KEY,
@@ -122,8 +107,6 @@ CREATE TABLE crawl_request_signal (
 );
 ```
 
-> 포트 3306 외부 오픈 필요 (클라우드/GCP 방화벽 설정) 
-
 ---
 
 ### 4) 실행 순서
@@ -136,18 +119,18 @@ export PYTHONPATH=/2025-GEO-Project
 set PYTHONPATH=c:/2025-GEO-Project
 ```
 
-**1. 크롤러(local_run.py) 실행 (VPN/프록시 적용 후)**
+**1. 크롤러(local_run.py) 실행**
 
 ```bash
 python backend/competitor_analysis/local_run.py
 ```
 
-- 리뷰 크롤링 → 요약 → DB 저장 (백그라운드 실행 필요)
+- 비공개 서버에서 주기적 리뷰 수집 → 요약 → DB 저장
 
-**2. 제공된 seed(init_seed_categories.py) 실행 (선택)**
+**2. seed 실행 (선택)**
 
 ```bash
-python backemd/competitor_analysis/init_seed_categories.py
+python backend/competitor_analysis/init_seed_categories.py
 ```
 
 - initial_categories.json 내부의 카테고리들을 크롤링 하도록 실행
@@ -162,25 +145,15 @@ python run.py
 
 ---
 
-### 구조 요약 (단일 & 2대 이상 환경)
+### 구조 요약
 
 ```css
-[단일 서버]
-MySQL ✅     
+[단일 서버 구성 예시]
+MySQL ✅
 local_run.py ✅
-Proxy/VPN 적용
 run.py ✅
-.env (DB 고정 IP)
+.env 설정 필요 (DB 정보 및 BASE_SEARCH_URL)
 ```
-또는
-```css
-[DB 서버]       [크롤링 서버(VPN)]
-MySQL ✅        local_run.py ✅
-run.py ✅       Proxy/VPN 적용
-.env (DB 고정 IP)
-```
-
-> 핵심: 모든 장비는 DB에 접근 가능해야 함 (3306 포트 오픈)
 
 ## 3. 📂 프로젝트 구조
 
